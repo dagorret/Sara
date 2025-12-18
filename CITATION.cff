@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+title: "SARA: Academic System for Reproducibility and Analysis"
+message: "If you use this software in academic work, please cite it as below."
+type: software
+authors:
+  - family-names: Dagorret
+    given-names: Carlos
+    affiliation: Facultad de Ciencias Económicas, Universidad Nacional de Río Cuarto
+version: 0.1.0
+date-released: 2025-01-01
+url: https://github.com/dagorret/Sara
+keywords:
+  - reproducible research
+  - statistics
+  - econometrics
+  - data analysis
+  - academic software
+license: MIT
