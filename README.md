@@ -3,10 +3,14 @@
 ![Status](https://img.shields.io/badge/status-active%20development-orange)
 ![Reproducibility](https://img.shields.io/badge/reproducibility-guaranteed-brightgreen)
 ![Academic](https://img.shields.io/badge/use-academic%20%7C%20research-blueviolet)
-![CLI](https://img.shields.io/badge/interface-CLI-lightgrey)
+![Interface](https://img.shields.io/badge/interface-CLI%20%7C%20Web%20%7C%20Desktop-lightgrey)
 ![DuckDB](https://img.shields.io/badge/engine-DuckDB-yellow)
 ![Parquet](https://img.shields.io/badge/storage-Parquet-005571)
 ![Open%20Science](https://img.shields.io/badge/open-science-success)
+![Interfaces](https://img.shields.io/badge/interfaces-CLI%20%7C%20Web%20%7C%20Desktop-lightgrey)
+![Core](https://img.shields.io/badge/core-programmatic%20API-lightgrey)
+
+
 
 # SARA  
 ## Academic System for Reproducibility and Analysis
