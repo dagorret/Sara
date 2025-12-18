@@ -1,21 +1,16 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Callable, TypeVar
 
 import typer
 
 from sara.orchestrator import Orchestrator
 
+T = TypeVar("T")
+
 # ------------------------------------------------------------
 # CLI principal y sub-apps
-# ------------------------------------------------------------
-# Typer permite agrupar comandos por "sub-aplicaciones".
-# Esto hace que el CLI quede organizado:
-#   sara dataset ...
-#   sara import ...
-#   sara transform ...
-#   sara stats ...
 # ------------------------------------------------------------
 
 app = typer.Typer(help="SARA CLI (skeleton). Interfaces datasets, transforms y stats.")
@@ -30,29 +25,18 @@ app.add_typer(transform_app, name="transform")
 app.add_typer(stats_app, name="stats")
 
 # ------------------------------------------------------------
-# Orchestrator
+# Orchestrator (Facade)
 # ------------------------------------------------------------
-# En el diseño recomendado:
-# - CLI habla SOLO con Orchestrator
-# - CLI NO debe acceder a orc.repository directamente
-#   (porque mañana el repo puede ser Postgres, remoto, etc.)
-# ------------------------------------------------------------
+
 orc = Orchestrator()
 
 
+# ------------------------------------------------------------
+# Helpers
+# ------------------------------------------------------------
+
 def _parse_dataset_version(raw: str) -> tuple[str, str]:
-    """
-    Parsea una referencia compacta de versión.
-
-    Formato esperado:
-      <dataset_id>:<version>
-    Ejemplos:
-      hogares_2023:v1
-      ipc:v2
-
-    BUG original (en tu captura):
-      - estabas validando "." en lugar de ":" -> siempre fallaba.
-    """
+    """Parsea '<dataset_id>:<version>' (ej: hogares_2023:v1)."""
     if ":" not in raw:
         raise typer.BadParameter("Formato esperado: <dataset_id>:<version> (ej: hogares_2023:v1)")
     dataset_id, version = raw.split(":", 1)
@@ -60,17 +44,37 @@ def _parse_dataset_version(raw: str) -> tuple[str, str]:
 
 
 def _catch_not_implemented() -> None:
-    """
-    Mensaje estándar para features que todavía son stubs.
-
-    Esto es útil en skeleton porque:
-      - te permite exponer el comando ya
-      - y mostrar al usuario que falta implementación interna
-    """
     typer.secho(
         "Esta acción está en esqueleto: falta implementar engine/storage.",
         fg=typer.colors.YELLOW,
     )
+
+
+def _cli_guard(fn: Callable[[], T]) -> T:
+    """Wrapper estándar para errores CLI (menos repetición)."""
+    try:
+        return fn()
+    except FileNotFoundError as exc:
+        typer.secho(str(exc), fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+    except KeyError as exc:
+        typer.secho(str(exc), fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+    except NotImplementedError:
+        _catch_not_implemented()
+        raise typer.Exit(code=1)
+    except Exception as exc:  # noqa: BLE001
+        typer.secho(str(exc), fg=typer.colors.RED)
+        raise typer.Exit(code=1) from exc
+
+
+def _get_version(ref: str):
+    dataset_id, version = _parse_dataset_version(ref)
+    return orc.get_version(dataset_id, version)
+
+
+def _print_new_version(v) -> None:
+    typer.echo(f"Nueva versión: {v.dataset_id}:{v.version}")
 
 
 # ------------------------------------------------------------
@@ -84,36 +88,40 @@ def dataset_create(
     description: Optional[str] = typer.Option(None, "--description", "-m", help="Descripción opcional."),
 ):
     """Registrar un nuevo dataset lógico."""
-    try:
+
+    def run():
         dataset = orc.create_dataset(dataset_id=dataset_id, name=name, description=description)
         typer.echo(f"Dataset creado: {dataset.dataset_id} ({dataset.name})")
-    except Exception as exc:  # noqa: BLE001
-        typer.secho(str(exc), fg=typer.colors.RED)
-        raise typer.Exit(code=1) from exc
+
+    _cli_guard(run)
 
 
 @dataset_app.command("list")
 def dataset_list():
     """Listar datasets registrados."""
-    datasets = orc.list_datasets()
-    if not datasets:
-        typer.echo("No hay datasets registrados.")
-        raise typer.Exit(code=0)
-    for ds in datasets:
-        typer.echo(f"- {ds.dataset_id}: {ds.name}")
+
+    def run():
+        datasets = orc.list_datasets()
+        if not datasets:
+            typer.echo("No hay datasets registrados.")
+            raise typer.Exit(code=0)
+        for ds in datasets:
+            typer.echo(f"- {ds.dataset_id}: {ds.name}")
+
+    _cli_guard(run)
 
 
 @dataset_app.command("show")
 def dataset_show(dataset_id: str):
     """Mostrar un dataset por id."""
-    try:
+
+    def run():
         ds = orc.get_dataset(dataset_id)
         typer.echo(f"{ds.dataset_id} :: {ds.name}")
         if ds.description:
             typer.echo(ds.description)
-    except Exception as exc:  # noqa: BLE001
-        typer.secho(str(exc), fg=typer.colors.RED)
-        raise typer.Exit(code=1) from exc
+
+    _cli_guard(run)
 
 
 # ------------------------------------------------------------
@@ -127,15 +135,12 @@ def import_csv(
     version: str = typer.Option("v1", help="Versión que se creará (inmutable)."),
 ):
     """Importar un CSV y crear la primera versión en Parquet."""
-    try:
+
+    def run():
         version_obj = orc.import_csv(dataset_id=dataset_id, csv_path=csv_path, version=version)
         typer.echo(f"Versión creada: {version_obj.dataset_id}:{version_obj.version} -> {version_obj.path}")
-    except FileNotFoundError as exc:
-        typer.secho(str(exc), fg=typer.colors.RED)
-        raise typer.Exit(code=1) from exc
-    except Exception as exc:  # noqa: BLE001
-        typer.secho(str(exc), fg=typer.colors.RED)
-        raise typer.Exit(code=1) from exc
+
+    _cli_guard(run)
 
 
 @import_app.command("xlsx")
@@ -146,15 +151,12 @@ def import_xlsx(
     sheet: Optional[str] = typer.Option(None, "--sheet", help="Hoja a leer (por defecto la primera)."),
 ):
     """Importar un Excel y crear la primera versión en Parquet."""
-    try:
+
+    def run():
         version_obj = orc.import_xlsx(dataset_id=dataset_id, xlsx_path=xlsx_path, version=version, sheet=sheet)
         typer.echo(f"Versión creada: {version_obj.dataset_id}:{version_obj.version} -> {version_obj.path}")
-    except FileNotFoundError as exc:
-        typer.secho(str(exc), fg=typer.colors.RED)
-        raise typer.Exit(code=1) from exc
-    except Exception as exc:  # noqa: BLE001
-        typer.secho(str(exc), fg=typer.colors.RED)
-        raise typer.Exit(code=1) from exc
+
+    _cli_guard(run)
 
 
 # ------------------------------------------------------------
@@ -166,52 +168,30 @@ def preview(
     dataset_version: str,
     limit: int = typer.Option(100, "--limit", "-l", help="Filas a mostrar (<=100)."),
 ):
-    """
-    Preview controlado de una versión.
-
-    Nota:
-      - El help dice <=100, entonces acá se valida.
-      - Si en el futuro querés permitir más, subís el límite y cambiás el help.
-    """
+    """Preview controlado de una versión."""
     if limit > 100:
         raise typer.BadParameter("limit máximo es 100 (ajustar CLI si querés más).")
 
-    dataset_id, version = _parse_dataset_version(dataset_version)
-    try:
-        # Importante: el CLI NO toca repository.
-        # Esto permite cambiar de repo (memory -> Postgres) sin tocar CLI.
-        dv = orc.get_version(dataset_id, version)
-
+    def run():
+        dv = _get_version(dataset_version)
         rows = orc.preview(dv, limit=limit)
-        typer.echo(f"Preview de {dataset_id}:{version} (primeras {limit} filas):")
+        typer.echo(f"Preview de {dataset_version} (primeras {limit} filas):")
         for row in rows:
             typer.echo(str(row))
-    except KeyError as exc:
-        typer.secho(str(exc), fg=typer.colors.RED)
-        raise typer.Exit(code=1) from exc
-    except NotImplementedError:
-        _catch_not_implemented()
-    except Exception as exc:  # noqa: BLE001
-        typer.secho(str(exc), fg=typer.colors.RED)
-        raise typer.Exit(code=1) from exc
+
+    _cli_guard(run)
 
 
 @app.command("profile")
 def profile(dataset_version: str):
     """Perfilado básico de columnas."""
-    dataset_id, version = _parse_dataset_version(dataset_version)
-    try:
-        dv = orc.get_version(dataset_id, version)
+
+    def run():
+        dv = _get_version(dataset_version)
         profile_data = orc.profile(dv)
         typer.echo(profile_data)
-    except KeyError as exc:
-        typer.secho(str(exc), fg=typer.colors.RED)
-        raise typer.Exit(code=1) from exc
-    except NotImplementedError:
-        _catch_not_implemented()
-    except Exception as exc:  # noqa: BLE001
-        typer.secho(str(exc), fg=typer.colors.RED)
-        raise typer.Exit(code=1) from exc
+
+    _cli_guard(run)
 
 
 # ------------------------------------------------------------
@@ -225,19 +205,13 @@ def transform_filter(
     out_version: str = typer.Option(..., "--out-version", help="Nueva versión (ej: v2)."),
 ):
     """Filtrar filas y generar nueva versión."""
-    dataset_id, version = _parse_dataset_version(dataset_version)
-    try:
-        dv = orc.get_version(dataset_id, version)
+
+    def run():
+        dv = _get_version(dataset_version)
         new_version = orc.filter(dataset_version=dv, where=where, out_version=out_version)
-        typer.echo(f"Nueva versión: {new_version.dataset_id}:{new_version.version}")
-    except KeyError as exc:
-        typer.secho(str(exc), fg=typer.colors.RED)
-        raise typer.Exit(code=1) from exc
-    except NotImplementedError:
-        _catch_not_implemented()
-    except Exception as exc:  # noqa: BLE001
-        typer.secho(str(exc), fg=typer.colors.RED)
-        raise typer.Exit(code=1) from exc
+        _print_new_version(new_version)
+
+    _cli_guard(run)
 
 
 @transform_app.command("winsorize")
@@ -249,9 +223,10 @@ def transform_winsorize(
     out_column: Optional[str] = typer.Option(None, "--out-col", help="Columna de salida (default: reemplaza)."),
     out_version: str = typer.Option(..., "--out-version", help="Nueva versión (ej: v2)."),
 ):
-    dataset_id, version = _parse_dataset_version(dataset_version)
-    try:
-        dv = orc.get_version(dataset_id, version)
+    """Winsorizar columna y generar nueva versión."""
+
+    def run():
+        dv = _get_version(dataset_version)
         new_version = orc.winsorize(
             dataset_version=dv,
             column=column,
@@ -260,15 +235,9 @@ def transform_winsorize(
             out_column=out_column,
             out_version=out_version,
         )
-        typer.echo(f"Nueva versión: {new_version.dataset_id}:{new_version.version}")
-    except KeyError as exc:
-        typer.secho(str(exc), fg=typer.colors.RED)
-        raise typer.Exit(code=1) from exc
-    except NotImplementedError:
-        _catch_not_implemented()
-    except Exception as exc:  # noqa: BLE001
-        typer.secho(str(exc), fg=typer.colors.RED)
-        raise typer.Exit(code=1) from exc
+        _print_new_version(new_version)
+
+    _cli_guard(run)
 
 
 @transform_app.command("recode")
@@ -279,12 +248,13 @@ def transform_recode(
     out_column: Optional[str] = typer.Option(None, "--out-col", help="Columna de salida (default: reemplaza)."),
     out_version: str = typer.Option(..., "--out-version", help="Nueva versión (ej: v2)."),
 ):
-    dataset_id, version = _parse_dataset_version(dataset_version)
-    try:
+    """Recodificar columna con mapping JSON y generar nueva versión."""
+
+    def run():
         import json
 
         mapping_dict = json.loads(mapping)
-        dv = orc.get_version(dataset_id, version)
+        dv = _get_version(dataset_version)
         new_version = orc.recode(
             dataset_version=dv,
             column=column,
@@ -292,18 +262,16 @@ def transform_recode(
             out_column=out_column,
             out_version=out_version,
         )
-        typer.echo(f"Nueva versión: {new_version.dataset_id}:{new_version.version}")
-    except json.JSONDecodeError as exc:
-        typer.secho(f"Mapping inválido: {exc}", fg=typer.colors.RED)
-        raise typer.Exit(code=1) from exc
-    except KeyError as exc:
-        typer.secho(str(exc), fg=typer.colors.RED)
-        raise typer.Exit(code=1) from exc
-    except NotImplementedError:
-        _catch_not_implemented()
+        _print_new_version(new_version)
+
+    try:
+        _cli_guard(run)
     except Exception as exc:  # noqa: BLE001
-        typer.secho(str(exc), fg=typer.colors.RED)
-        raise typer.Exit(code=1) from exc
+        # Mantener mensaje especial para JSON inválido si aparece
+        if "JSONDecodeError" in exc.__class__.__name__:
+            typer.secho(f"Mapping inválido: {exc}", fg=typer.colors.RED)
+            raise typer.Exit(code=1) from exc
+        raise
 
 
 # ------------------------------------------------------------
@@ -316,19 +284,14 @@ def stats_mean(
     column: str = typer.Option(..., "--col", help="Columna objetivo."),
     where: Optional[str] = typer.Option(None, "--where", help="Filtro opcional."),
 ):
-    dataset_id, version = _parse_dataset_version(dataset_version)
-    try:
-        dv = orc.get_version(dataset_id, version)
+    """Calcular media de una columna (con filtro opcional)."""
+
+    def run():
+        dv = _get_version(dataset_version)
         result = orc.mean(dataset_version=dv, column=column, where=where)
         typer.echo(f"Mean({column}) = {result}")
-    except KeyError as exc:
-        typer.secho(str(exc), fg=typer.colors.RED)
-        raise typer.Exit(code=1) from exc
-    except NotImplementedError:
-        _catch_not_implemented()
-    except Exception as exc:  # noqa: BLE001
-        typer.secho(str(exc), fg=typer.colors.RED)
-        raise typer.Exit(code=1) from exc
+
+    _cli_guard(run)
 
 
 # ------------------------------------------------------------
@@ -338,24 +301,22 @@ def stats_mean(
 @app.command("run")
 def run_from_spec(spec_path: Path):
     """Ejecutar una spec JSON/YAML (placeholder)."""
-    try:
+
+    def run():
         typer.echo(f"Leer spec: {spec_path} (pendiente de implementación)")
         _catch_not_implemented()
-    except Exception as exc:  # noqa: BLE001
-        typer.secho(str(exc), fg=typer.colors.RED)
-        raise typer.Exit(code=1) from exc
+
+    _cli_guard(run)
 
 
 @app.command("debug-state")
 def debug_state():
-    """
-    Imprimir estado en memoria del repositorio (útil en skeleton).
+    """Imprimir estado en memoria del repositorio (útil en skeleton)."""
 
-    Nota:
-      - En producción, esto puede ser demasiado verboso o exponer datos.
-      - En skeleton, es excelente para ver que create/import/version funciona.
-    """
-    typer.echo(orc.repository.as_debug_dict())
+    def run():
+        typer.echo(orc.repository.as_debug_dict())
+
+    _cli_guard(run)
 
 
 if __name__ == "__main__":
