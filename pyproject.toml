@@ -1,0 +1,14 @@
+[project]
+name = "sara"
+version = "0.1.2"
+description = "Academic System for Reproducibility and Analysis"
+requires-python = ">=3.10"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Carlos Dagorret", email = "carlos.dagorret@unrc.edu.ar" }
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
