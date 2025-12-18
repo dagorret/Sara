@@ -1,3 +1,13 @@
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Status](https://img.shields.io/badge/status-active%20development-orange)
+![Reproducibility](https://img.shields.io/badge/reproducibility-guaranteed-brightgreen)
+![Academic](https://img.shields.io/badge/use-academic%20%7C%20research-blueviolet)
+![CLI](https://img.shields.io/badge/interface-CLI-lightgrey)
+![DuckDB](https://img.shields.io/badge/engine-DuckDB-yellow)
+![Parquet](https://img.shields.io/badge/storage-Parquet-005571)
+![Open%20Science](https://img.shields.io/badge/open-science-success)
+
 # SARA  
 ## Academic System for Reproducibility and Analysis
 
@@ -148,7 +158,11 @@ Advanced econometrics, notebooks, and AI-assisted features are part of the futur
 ---
 
 ## 📜 License
-(To be defined)
+
+This project is released under the **MIT License**.
+See the [LICENSE](LICENSE) file for details.
+
+If you use SARA in academic work, please cite the project (see `CITATION.cff`).
 
 ---
 
