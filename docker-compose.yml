@@ -1,0 +1,48 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sara_web
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app/src
+      - sara_data:/app/data
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    command: >
+      sh -c "
+        python -m pip install --upgrade pip &&
+        python src/manage.py migrate &&
+        python src/manage.py runserver 0.0.0.0:8000
+      "
+
+  db:
+    image: postgres:16
+    container_name: sara_db
+    env_file:
+      - .env
+    volumes:
+      - sara_pg:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: sara_pgadmin
+    env_file:
+      - .env
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    volumes:
+      - sara_pgadmin:/var/lib/pgadmin
+
+volumes:
+  sara_pg:
+  sara_pgadmin:
+  sara_data:

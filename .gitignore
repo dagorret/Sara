@@ -1,0 +1,15 @@
+# Virtualenv
+.venv/
+
+# Bytecode y cachés
+__pycache__/
+*.pyc
+
+# Entornos locales / IDE
+.vscode/
+.idea/
+
+# Entorno y datos locales
+.env
+data/
+venv/

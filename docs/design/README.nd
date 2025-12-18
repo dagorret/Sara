@@ -1,0 +1,124 @@
+# 📐 Design Decisions — SARA
+
+This section documents the **core architectural decisions** behind SARA.  
+The goal is to make the system understandable, justifiable, and maintainable in an academic and institutional context.
+
+These documents explain *why* certain technologies and patterns were chosen, not just *how* they are used.
+
+---
+
+## 🔑 Guiding principles
+
+All design decisions in SARA are guided by the following principles:
+
+- Reproducibility by construction
+- Immutability of data
+- Explicit versioning
+- Reasonable scalability (academic / professional scale)
+- Simplicity of deployment
+- Pedagogical transparency
+
+---
+
+## 📂 Design documents
+
+### 1️⃣ Why DuckDB
+**Analytical engine**
+
+Explains why DuckDB is used as the embedded analytical engine instead of pandas, SQLite, PostgreSQL, or big data platforms.
+
+Key topics:
+- Analytical (OLAP) focus
+- Direct querying of Parquet
+- Low memory footprint
+- Embedded and serverless architecture
+- Suitability for teaching and reproducibility
+
+➡️ See: `why-duckdb.md`
+
+---
+
+### 2️⃣ Why Parquet
+**Data storage format**
+
+Explains why Apache Parquet is used for dataset storage and versioning.
+
+Key topics:
+- Columnar storage
+- Compression and encoding
+- Analytical workload optimization
+- Interoperability and longevity
+- Natural fit for immutable dataset versions
+
+➡️ See: `why-parquet.md`
+
+---
+
+### 3️⃣ Why immutable datasets
+**Reproducibility and auditability**
+
+Explains why datasets are never edited in place and why every transformation produces a new version.
+
+Key topics:
+- Reproducibility guarantees
+- Lineage tracking
+- Error prevention
+- Alignment with scientific workflows
+
+➡️ (to be added)
+
+---
+
+### 4️⃣ Why SQL-first analytics
+**Transparency and pedagogy**
+
+Explains why SARA relies on SQL as the core analytical language.
+
+Key topics:
+- Auditability
+- Teachability
+- Explicit analytical steps
+- Separation of data logic and UI
+
+➡️ (to be added)
+
+---
+
+### 5️⃣ Why not notebooks (initially)
+**Controlled analytical workflows**
+
+Explains why notebooks are not part of the initial core and how they may be integrated later in a controlled way.
+
+Key topics:
+- Reproducibility risks
+- Version control
+- Educational clarity
+- Future roadmap (Super Pro mode)
+
+➡️ (to be added)
+
+---
+
+## 🧭 How to read these documents
+
+- These documents are **not tutorials**.
+- They are meant to justify architectural choices to:
+  - instructors,
+  - researchers,
+  - contributors,
+  - institutional reviewers.
+
+They are intentionally conservative and avoid experimental or hype-driven arguments.
+
+---
+
+## 🏁 Summary
+
+SARA’s architecture is designed to:
+
+- support real statistical and econometric work,
+- remain understandable by non-specialists,
+- scale within realistic academic constraints,
+- ensure that results can always be reproduced and audited.
+
+Design decisions are documented explicitly to avoid implicit assumptions and hidden complexity.
