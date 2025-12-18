@@ -7,6 +7,17 @@ import typer
 
 from sara.orchestrator import Orchestrator
 
+# ------------------------------------------------------------
+# CLI principal y sub-apps
+# ------------------------------------------------------------
+# Typer permite agrupar comandos por "sub-aplicaciones".
+# Esto hace que el CLI quede organizado:
+#   sara dataset ...
+#   sara import ...
+#   sara transform ...
+#   sara stats ...
+# ------------------------------------------------------------
+
 app = typer.Typer(help="SARA CLI (skeleton). Interfaces datasets, transforms y stats.")
 dataset_app = typer.Typer(help="Crear y consultar datasets.")
 import_app = typer.Typer(help="Importar datos (crea versiones inmutables).")
@@ -18,19 +29,53 @@ app.add_typer(import_app, name="import")
 app.add_typer(transform_app, name="transform")
 app.add_typer(stats_app, name="stats")
 
+# ------------------------------------------------------------
+# Orchestrator
+# ------------------------------------------------------------
+# En el diseño recomendado:
+# - CLI habla SOLO con Orchestrator
+# - CLI NO debe acceder a orc.repository directamente
+#   (porque mañana el repo puede ser Postgres, remoto, etc.)
+# ------------------------------------------------------------
 orc = Orchestrator()
 
 
-def _parse_dataset_version(raw: str):
+def _parse_dataset_version(raw: str) -> tuple[str, str]:
+    """
+    Parsea una referencia compacta de versión.
+
+    Formato esperado:
+      <dataset_id>:<version>
+    Ejemplos:
+      hogares_2023:v1
+      ipc:v2
+
+    BUG original (en tu captura):
+      - estabas validando "." en lugar de ":" -> siempre fallaba.
+    """
     if ":" not in raw:
         raise typer.BadParameter("Formato esperado: <dataset_id>:<version> (ej: hogares_2023:v1)")
     dataset_id, version = raw.split(":", 1)
     return dataset_id, version
 
 
-def _catch_not_implemented():
-    typer.secho("Esta acción está en esqueleto: falta implementar engine/storage.", fg=typer.colors.YELLOW)
+def _catch_not_implemented() -> None:
+    """
+    Mensaje estándar para features que todavía son stubs.
 
+    Esto es útil en skeleton porque:
+      - te permite exponer el comando ya
+      - y mostrar al usuario que falta implementación interna
+    """
+    typer.secho(
+        "Esta acción está en esqueleto: falta implementar engine/storage.",
+        fg=typer.colors.YELLOW,
+    )
+
+
+# ------------------------------------------------------------
+# dataset: create/list/show
+# ------------------------------------------------------------
 
 @dataset_app.command("create")
 def dataset_create(
@@ -71,6 +116,10 @@ def dataset_show(dataset_id: str):
         raise typer.Exit(code=1) from exc
 
 
+# ------------------------------------------------------------
+# import: csv/xlsx
+# ------------------------------------------------------------
+
 @import_app.command("csv")
 def import_csv(
     dataset_id: str,
@@ -108,12 +157,31 @@ def import_xlsx(
         raise typer.Exit(code=1) from exc
 
 
+# ------------------------------------------------------------
+# preview / profile (top-level)
+# ------------------------------------------------------------
+
 @app.command("preview")
-def preview(dataset_version: str, limit: int = typer.Option(100, "--limit", "-l", help="Filas a mostrar (<=100).")):
-    """Preview controlado de una versión."""
+def preview(
+    dataset_version: str,
+    limit: int = typer.Option(100, "--limit", "-l", help="Filas a mostrar (<=100)."),
+):
+    """
+    Preview controlado de una versión.
+
+    Nota:
+      - El help dice <=100, entonces acá se valida.
+      - Si en el futuro querés permitir más, subís el límite y cambiás el help.
+    """
+    if limit > 100:
+        raise typer.BadParameter("limit máximo es 100 (ajustar CLI si querés más).")
+
     dataset_id, version = _parse_dataset_version(dataset_version)
     try:
-        dv = orc.repository.get_version(dataset_id, version)
+        # Importante: el CLI NO toca repository.
+        # Esto permite cambiar de repo (memory -> Postgres) sin tocar CLI.
+        dv = orc.get_version(dataset_id, version)
+
         rows = orc.preview(dv, limit=limit)
         typer.echo(f"Preview de {dataset_id}:{version} (primeras {limit} filas):")
         for row in rows:
@@ -133,7 +201,7 @@ def profile(dataset_version: str):
     """Perfilado básico de columnas."""
     dataset_id, version = _parse_dataset_version(dataset_version)
     try:
-        dv = orc.repository.get_version(dataset_id, version)
+        dv = orc.get_version(dataset_id, version)
         profile_data = orc.profile(dv)
         typer.echo(profile_data)
     except KeyError as exc:
@@ -146,6 +214,10 @@ def profile(dataset_version: str):
         raise typer.Exit(code=1) from exc
 
 
+# ------------------------------------------------------------
+# transform: filter / winsorize / recode
+# ------------------------------------------------------------
+
 @transform_app.command("filter")
 def transform_filter(
     dataset_version: str,
@@ -155,7 +227,7 @@ def transform_filter(
     """Filtrar filas y generar nueva versión."""
     dataset_id, version = _parse_dataset_version(dataset_version)
     try:
-        dv = orc.repository.get_version(dataset_id, version)
+        dv = orc.get_version(dataset_id, version)
         new_version = orc.filter(dataset_version=dv, where=where, out_version=out_version)
         typer.echo(f"Nueva versión: {new_version.dataset_id}:{new_version.version}")
     except KeyError as exc:
@@ -179,7 +251,7 @@ def transform_winsorize(
 ):
     dataset_id, version = _parse_dataset_version(dataset_version)
     try:
-        dv = orc.repository.get_version(dataset_id, version)
+        dv = orc.get_version(dataset_id, version)
         new_version = orc.winsorize(
             dataset_version=dv,
             column=column,
@@ -212,7 +284,7 @@ def transform_recode(
         import json
 
         mapping_dict = json.loads(mapping)
-        dv = orc.repository.get_version(dataset_id, version)
+        dv = orc.get_version(dataset_id, version)
         new_version = orc.recode(
             dataset_version=dv,
             column=column,
@@ -234,6 +306,10 @@ def transform_recode(
         raise typer.Exit(code=1) from exc
 
 
+# ------------------------------------------------------------
+# stats: mean
+# ------------------------------------------------------------
+
 @stats_app.command("mean")
 def stats_mean(
     dataset_version: str,
@@ -242,7 +318,7 @@ def stats_mean(
 ):
     dataset_id, version = _parse_dataset_version(dataset_version)
     try:
-        dv = orc.repository.get_version(dataset_id, version)
+        dv = orc.get_version(dataset_id, version)
         result = orc.mean(dataset_version=dv, column=column, where=where)
         typer.echo(f"Mean({column}) = {result}")
     except KeyError as exc:
@@ -254,6 +330,10 @@ def stats_mean(
         typer.secho(str(exc), fg=typer.colors.RED)
         raise typer.Exit(code=1) from exc
 
+
+# ------------------------------------------------------------
+# Extras: run/debug-state (skeleton)
+# ------------------------------------------------------------
 
 @app.command("run")
 def run_from_spec(spec_path: Path):
@@ -268,7 +348,13 @@ def run_from_spec(spec_path: Path):
 
 @app.command("debug-state")
 def debug_state():
-    """Imprimir estado en memoria del repositorio (útil en skeleton)."""
+    """
+    Imprimir estado en memoria del repositorio (útil en skeleton).
+
+    Nota:
+      - En producción, esto puede ser demasiado verboso o exponer datos.
+      - En skeleton, es excelente para ver que create/import/version funciona.
+    """
     typer.echo(orc.repository.as_debug_dict())
 
 
