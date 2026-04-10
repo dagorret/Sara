@@ -1,0 +1,39 @@
+# Python
+
+**pycache**/
+*.pyc
+*.pyo
+*.pyd
+*.log
+
+# Entorno virtual
+
+.venv/
+venv/
+
+# Jupyter
+
+.ipynb_checkpoints/
+
+# Archivos del sistema
+
+.DS_Store
+Thumbs.db
+
+# Datos (opcional)
+
+datos/*.csv
+resultados/
+
+# DuckDB
+
+data/*.db
+
+# IDE
+
+.vscode/
+.idea/
+
+# Node (por si quedó algo)
+
+node_modules/

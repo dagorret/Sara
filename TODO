@@ -1,0 +1,226 @@
+[200~CORE - MEJORAS PENDIENTES (NIVEL PROFESIONAL)
+
+Estado actual: sólido, funcional, bien diseñado
+Objetivo: robustez, estabilidad y preparación para producción
+
+---
+
+1. VALIDACIÓN DE DATOS (PRIORIDAD ALTA)
+
+Problema:
+Actualmente no se valida correctamente:
+
+* existencia de columnas (y, X)
+* tipos de datos (numéricos)
+* valores nulos
+
+Solución:
+Crear módulo validator.py con funciones como:
+
+* validate_columns_exist(dataset, columns)
+* validate_numeric_columns(dataset, columns)
+* validate_no_nulls(dataset, columns)
+
+Uso:
+Antes de cualquier modelo:
+run_ols(dataset, y, X) → validar primero
+
+---
+
+2. MANEJO DE ERRORES (PRIORIDAD ALTA)
+
+Problema:
+Errores rompen ejecución o son poco claros.
+
+Solución:
+Crear excepciones personalizadas:
+
+class ModelError(Exception)
+class ValidationError(Exception)
+class QueryError(Exception)
+
+Ejemplo:
+raise ValidationError("La variable 'edad' no es numérica")
+
+Beneficio:
+
+* UI puede capturar errores
+* mensajes claros al usuario
+
+---
+
+3. METADATA DEL DATASET (PRIORIDAD ALTA)
+
+Problema:
+No hay información estructurada del dataset.
+
+Agregar en Dataset:
+
+get_metadata()
+
+Debe devolver:
+
+* columnas
+* tipos
+* cantidad de nulos
+* cardinalidad
+* estadísticas básicas (mean, std)
+
+Uso:
+
+* validación
+* UI
+* reportes
+
+---
+
+4. QUERY STATE MÁS ROBUSTO
+
+Problema:
+
+* filtros no validados
+* posible SQL inseguro
+* sin control de columnas
+
+Mejoras:
+
+* validar columnas en filters
+* sanitizar inputs
+* evitar inyección SQL
+* soporte de alias
+
+---
+
+5. ABSTRACCIÓN DE RESULTADOS DE MODELOS
+
+Problema:
+Se depende directamente de statsmodels.
+
+Solución:
+Crear clase:
+
+class ModelResult:
+coefficients
+pvalues
+metrics
+summary
+model_type
+
+Beneficio:
+
+* desacople
+* flexibilidad futura
+
+---
+
+6. LOGGING
+
+Agregar logging estructurado:
+
+import logging
+
+log.info("Running OLS...")
+log.error("Error en modelo")
+
+Beneficio:
+
+* debugging
+* trazabilidad
+
+---
+
+7. TESTS BÁSICOS
+
+Agregar tests mínimos:
+
+* test_loader
+* test_dataset_query
+* test_regression
+* test_validation
+
+No necesitan ser complejos, pero deben existir.
+
+---
+
+8. CONFIGURACIÓN CENTRAL
+
+Crear config.py:
+
+* DB_PATH
+* PAGE_SIZE
+* THRESHOLDS
+* DEFAULTS
+
+Evitar hardcoding.
+
+---
+
+9. PIPELINE REPRODUCIBLE
+
+Objetivo:
+Ejecutar análisis completo desde estado:
+
+Dataset (Query State)
+→ modelo
+→ evaluación
+→ reporte
+
+Todo reproducible desde un estado guardado.
+
+---
+
+10. CACHE (OPCIONAL)
+
+Optimizar:
+
+* queries repetidas
+* paginación
+
+Implementar cache simple en Dataset o service layer.
+
+---
+
+PRIORIDADES
+
+Alta:
+
+* Validación
+* Manejo de errores
+* Metadata
+
+Media:
+
+* ModelResult
+* Logging
+
+Baja:
+
+* Cache
+* Optimización
+
+---
+
+CONCLUSIÓN
+
+El core ya está completo en funcionalidad.
+
+Lo que falta:
+→ robustez
+→ control
+→ calidad de ejecución
+
+---
+
+OBJETIVO FINAL
+
+Convertir el core en:
+
+* motor analítico confiable
+* reusable (desktop, CLI, web)
+* preparado para escalar
+
+---
+
+No agregar más features.
+Fortalecer lo existente.
+

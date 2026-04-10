@@ -1,0 +1,178 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SARA Desktop</title>
+    <link rel="stylesheet" href="{% static 'dist/output.css' %}">
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="max-w-4xl mx-auto p-6">
+        <h1 class="text-3xl font-bold text-blue-600 mb-6">SARA Desktop</h1>
+
+        <div class="bg-white shadow-lg rounded-xl p-6 space-y-4">
+            <div>
+                <h2 class="text-xl font-semibold text-gray-800">Correr modelo econométrico</h2>
+                <p class="text-sm text-gray-500 mt-1">
+                    Subí un CSV, definí las variables y elegí el método de estimación.
+                </p>
+            </div>
+
+            <form method="post" enctype="multipart/form-data" class="space-y-4">
+                {% csrf_token %}
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1" for="archivo">
+                        Archivo CSV
+                    </label>
+                    <input
+                        id="archivo"
+                        type="file"
+                        name="archivo"
+                        required
+                        class="w-full border border-gray-300 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    >
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1" for="y">
+                        Variable dependiente (Y)
+                    </label>
+                    <input
+                        id="y"
+                        type="text"
+                        name="y"
+                        placeholder="ej: ingreso o aprobado"
+                        required
+                        class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    >
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1" for="x">
+                        Variables independientes (X)
+                    </label>
+                    <input
+                        id="x"
+                        type="text"
+                        name="x"
+                        placeholder="ej: educacion,experiencia"
+                        required
+                        class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    >
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1" for="metodo">
+                        Método
+                    </label>
+                    <select
+                        id="metodo"
+                        name="metodo"
+                        class="w-full border border-gray-300 rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    >
+                        <option value="ols">OLS</option>
+                        <option value="logit">Logit</option>
+                        <option value="probit">Probit</option>
+                    </select>
+                </div>
+
+                <div class="pt-2">
+                    <button
+                        type="submit"
+                        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+                    >
+                        Correr modelo
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {% if resultado %}
+            <div class="bg-white shadow-lg rounded-xl p-6 mt-6">
+                <h2 class="text-xl font-bold text-blue-600 mb-4">
+                    Resultados
+                    {% if resultado.tipo == "ols" %}
+                        (Modelo: OLS)
+                    {% elif resultado.metodo %}
+                        (Modelo: {{ resultado.metodo|upper }})
+                    {% endif %}
+                </h2>
+
+                {% if resultado.mensajes_modelo %}
+                    <div class="bg-red-100 border border-red-300 text-red-700 p-4 rounded mt-4 mb-4">
+                        <h3 class="font-semibold mb-2">Advertencias del modelo</h3>
+                        <ul class="list-disc pl-5 space-y-1">
+                            {% for mensaje in resultado.mensajes_modelo %}
+                                <li>{{ mensaje }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+
+                <div class="mt-4">
+                    <h3 class="font-semibold text-gray-800 mb-3">Coeficientes</h3>
+                    <div class="border border-gray-200 rounded overflow-hidden">
+                        <table class="w-full">
+                            <thead class="bg-blue-100 text-left">
+                                <tr>
+                                    <th class="px-3 py-2">Variable</th>
+                                    <th class="px-3 py-2">Coeficiente</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 bg-white">
+                                {% for k, v in resultado.coeficientes.items %}
+                                    <tr>
+                                        <td class="px-3 py-2 text-gray-700">{{ k }}</td>
+                                        <td class="px-3 py-2 text-gray-900">{{ v }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {% if resultado.tipo == "clasificacion" %}
+                    <div class="mt-4">
+                        <h3 class="font-semibold text-gray-800 mb-3">Métricas</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                            <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                                <p class="text-sm text-gray-600">Accuracy</p>
+                                <p class="text-lg font-semibold text-blue-700">{{ resultado.accuracy }}</p>
+                            </div>
+                            <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                                <p class="text-sm text-gray-600">Precision</p>
+                                <p class="text-lg font-semibold text-blue-700">{{ resultado.precision }}</p>
+                            </div>
+                            <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                                <p class="text-sm text-gray-600">Recall</p>
+                                <p class="text-lg font-semibold text-blue-700">{{ resultado.recall }}</p>
+                            </div>
+                            <div class="bg-blue-50 border border-blue-200 rounded p-3">
+                                <p class="text-sm text-gray-600">F1</p>
+                                <p class="text-lg font-semibold text-blue-700">{{ resultado.f1 }}</p>
+                            </div>
+                            <div class="bg-blue-50 border border-blue-200 rounded p-3 md:col-span-2">
+                                <p class="text-sm text-gray-600">AUC</p>
+                                <p class="text-lg font-semibold text-blue-700">{{ resultado.auc }}</p>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+
+                {% if resultado.tipo == "ols" and resultado.interpretacion %}
+                    <div class="mt-4">
+                        <h3 class="font-semibold text-gray-800 mt-4 mb-2">Interpretación</h3>
+                        <ul class="list-disc pl-5 text-gray-700 space-y-2">
+                            {% for item in resultado.interpretacion %}
+                                <li>{{ item }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>

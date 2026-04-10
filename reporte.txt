@@ -1,0 +1,954 @@
+REPORTE DE PRUEBAS - SARA
+================================================================================
+Total de pruebas: 12
+Pruebas OK: 12
+Pruebas fallidas: 0
+
+PRUEBAS QUE DEBEN FUNCIONAR
+--------------------------------------------------------------------------------
+[1] OLS chico -> OK
+Descripción: Verifica que OLS chico siga funcionando.
+Comando: /home/carlos/work/sara/.venv/bin/python src/cli.py --method ols --file datos/ejemplo.csv --y ingreso --x educacion experiencia
+Exit code: 0
+
+STDOUT:
+=== DATASET ===
+   ingreso  educacion  experiencia
+0     1000         10            1
+1     1200         12            5
+2     1500         14            2
+3     1800         16            8
+4     2000         18            3
+
+=== VALIDACIONES ===
+
+Advertencias:
+ - Muy pocas observaciones: 6. Se recomiendan al menos 10
+
+=== RESULTADOS DEL MODELO ===
+
+
+Información general:
+ - Método: Mínimos Cuadrados Ordinarios (OLS)
+ - Variable dependiente: ingreso
+ - Observaciones: 6
+ - Grados de libertad (modelo): 2
+ - Grados de libertad (residuos): 3
+ - Tipo de covarianza: nonrobust
+
+Medidas de ajuste:
+ - R-cuadrado: 0.9937
+ - R-cuadrado ajustado: 0.9895
+ - Estadístico F: 235.9060
+ - Probabilidad(F): 0.0005
+ - Log-verosimilitud: -29.6459
+ - AIC: 65.2918
+ - BIC: 64.6671
+
+Coeficientes:
+   Variable Coeficiente Error estándar Estadístico Valor p   IC 2.5% IC 97.5%
+      const   -258.4270        96.5060     -2.6778  0.0752 -565.5521  48.6982
+  educacion    125.7303         7.7900     16.1400  0.0005  100.9392 150.5215
+experiencia     -2.2472         8.2222     -0.2733  0.8024  -28.4140  23.9196
+
+Diagnóstico básico:
+ - Durbin-Watson: 1.8331
+ - Número de condición: 80.7087
+
+Interpretación rápida:
+ - educacion: coeficiente = 125.7303, efecto significativo (p = 0.0005), por lo que un aumento en esta variable aumenta la variable dependiente.
+ - experiencia: coeficiente = -2.2472, efecto no significativo (p = 0.8024), por lo que un aumento en esta variable disminuye la variable dependiente.
+
+STDERR:
+<vacío>
+
+================================================================================
+
+[2] OLS grande -> OK
+Descripción: Verifica que OLS grande no se rompa con la analítica nueva.
+Comando: /home/carlos/work/sara/.venv/bin/python src/cli.py --method ols --file datos/ols_grande.csv --y ingreso --x educacion experiencia
+Exit code: 0
+
+STDOUT:
+=== DATASET ===
+       ingreso  educacion  experiencia
+0  1656.773020         11            9
+1  1592.998177          8           20
+2  2385.063667         17            2
+3  2526.145112         19            8
+4  2340.472509         15            7
+
+=== VALIDACIONES ===
+OK: no se encontraron problemas
+
+=== RESULTADOS DEL MODELO ===
+
+
+Información general:
+ - Método: Mínimos Cuadrados Ordinarios (OLS)
+ - Variable dependiente: ingreso
+ - Observaciones: 10000
+ - Grados de libertad (modelo): 2
+ - Grados de libertad (residuos): 9997
+ - Tipo de covarianza: nonrobust
+
+Medidas de ajuste:
+ - R-cuadrado: 0.8747
+ - R-cuadrado ajustado: 0.8747
+ - Estadístico F: 34896.7178
+ - Probabilidad(F): 0.0000
+ - Log-verosimilitud: -67128.6305
+ - AIC: 134263.2611
+ - BIC: 134284.8921
+
+Coeficientes:
+   Variable Coeficiente Error estándar Estadístico Valor p  IC 2.5% IC 97.5%
+      const    207.9564         6.7405     30.8519  0.0000 194.7438 221.1691
+  educacion    119.9164         0.4606    260.3221  0.0000 119.0134 120.8193
+experiencia      9.6977         0.2315     41.8937  0.0000   9.2440  10.1515
+
+Diagnóstico básico:
+ - Durbin-Watson: 2.0161
+ - Número de condición: 68.7462
+
+Interpretación rápida:
+ - educacion: coeficiente = 119.9164, efecto significativo (p = 0.0000), por lo que un aumento en esta variable aumenta la variable dependiente.
+ - experiencia: coeficiente = 9.6977, efecto significativo (p = 0.0000), por lo que un aumento en esta variable aumenta la variable dependiente.
+
+STDERR:
+<vacío>
+
+================================================================================
+
+[3] Logit sano threshold 0.5 -> OK
+Descripción: Caso sano de clasificación.
+Comando: /home/carlos/work/sara/.venv/bin/python src/cli.py --method logit --file datos/logit_grande.csv --y aprobado --x horas_estudio asistencia --threshold 0.5
+Exit code: 0
+
+STDOUT:
+=== DATASET ===
+   aprobado  horas_estudio  asistencia
+0         1              6          76
+1         1              3          79
+2         1              7          79
+3         1              4          52
+4         1              6          92
+
+=== VALIDACIONES ===
+OK: no se encontraron problemas
+
+=== RESULTADOS DEL MODELO ===
+
+
+Información general:
+ - Método: Modelo Logit
+ - Variable dependiente: aprobado
+ - Observaciones: 10000
+ - Grados de libertad (modelo): 2
+ - Grados de libertad (residuos): 9997
+ - Tipo de covarianza: nonrobust
+
+Medidas de ajuste:
+ - Log-verosimilitud: -3179.0335
+ - AIC: 6364.0669
+ - BIC: 6385.6979
+ - Pseudo R-cuadrado: 0.4158
+
+Coeficientes:
+     Variable Coeficiente Error estándar Estadístico Valor p IC 2.5% IC 97.5%
+        const     -5.0862         0.1898    -26.7996  0.0000 -5.4582  -4.7142
+horas_estudio      0.8051         0.0181     44.4711  0.0000  0.7697   0.8406
+   asistencia      0.0513         0.0023     22.0190  0.0000  0.0467   0.0558
+
+Diagnóstico básico:
+ - Durbin-Watson: no aplica a Logit
+ - Número de condición: no disponible
+
+Interpretación rápida:
+ - horas_estudio: coeficiente = 0.8051, efecto significativo (p = 0.0000). En un modelo Logit, un aumento en esta variable aumenta el logaritmo de las odds del evento.
+ - asistencia: coeficiente = 0.0513, efecto significativo (p = 0.0000). En un modelo Logit, un aumento en esta variable aumenta el logaritmo de las odds del evento.
+
+=== EVALUACIÓN DEL MODELO ===
+Threshold usado: 0.5000
+Accuracy: 0.8550
+Precision: 0.8950
+Recall: 0.9184
+F1: 0.9066
+AUC: 0.9070
+
+Matriz de confusión:
+Predicho     0     1
+Real                
+0         1516   825
+1          625  7034
+
+=== ANÁLISIS AUTOMÁTICO ===
+Thresholds evaluados: 0.1 - 0.9
+Mejor threshold sugerido: 0.5000
+F1 máximo: 0.9066
+
+=== DIAGNÓSTICO AUTOMÁTICO ===
+⚠ Ligera tendencia a falsos positivos.
+✔ Buen poder predictivo (AUC > 0.9).
+
+=== COMPARACIÓN DE MODELOS ===
+Modelo    AUC     F1 Accuracy  Score
+ Logit 0.9070 0.9066   0.8550 0.8568
+Probit 0.9070 0.9063   0.8543 0.8567
+
+No hay diferencia sustancial entre Logit y Probit.
+
+Ambos modelos muestran desempeño muy similar.
+
+=== BALANCE DE CLASES ===
+Clase 0: 23.41%
+Clase 1: 76.59%
+
+=== DIAGNÓSTICO AVANZADO ===
+⚠ Ligera tendencia a falsos positivos.
+✔ Buen poder predictivo (AUC > 0.9).
+
+=== RECOMENDACIÓN FINAL ===
+No hay una recomendación fuerte entre Logit y Probit.
+Motivo: No hay diferencia sustancial entre Logit y Probit. Ambos modelos muestran desempeño muy similar.
+Score de referencia: 0.8568
+
+STDERR:
+<vacío>
+
+================================================================================
+
+[4] Probit sano threshold 0.5 -> OK
+Descripción: Caso sano con probit.
+Comando: /home/carlos/work/sara/.venv/bin/python src/cli.py --method probit --file datos/logit_grande.csv --y aprobado --x horas_estudio asistencia --threshold 0.5
+Exit code: 0
+
+STDOUT:
+=== DATASET ===
+   aprobado  horas_estudio  asistencia
+0         1              6          76
+1         1              3          79
+2         1              7          79
+3         1              4          52
+4         1              6          92
+
+=== VALIDACIONES ===
+OK: no se encontraron problemas
+
+=== RESULTADOS DEL MODELO ===
+
+
+Información general:
+ - Método: Modelo Probit
+ - Variable dependiente: aprobado
+ - Observaciones: 10000
+ - Grados de libertad (modelo): 2
+ - Grados de libertad (residuos): 9997
+ - Tipo de covarianza: nonrobust
+
+Medidas de ajuste:
+ - Log-verosimilitud: -3184.9402
+ - AIC: 6375.8805
+ - BIC: 6397.5115
+ - Pseudo R-cuadrado: 0.4147
+
+Coeficientes:
+     Variable Coeficiente Error estándar Estadístico Valor p IC 2.5% IC 97.5%
+        const     -2.8835         0.1051    -27.4270  0.0000 -3.0895  -2.6774
+horas_estudio      0.4469         0.0093     48.1987  0.0000  0.4288   0.4651
+   asistencia      0.0293         0.0013     22.4646  0.0000  0.0267   0.0318
+
+Diagnóstico básico:
+ - Durbin-Watson: no aplica a Probit
+ - Número de condición: no disponible
+
+Interpretación rápida:
+ - horas_estudio: coeficiente = 0.4469, efecto significativo (p = 0.0000). En un modelo Probit, un aumento en esta variable aumenta el índice latente asociado a la probabilidad del evento.
+ - asistencia: coeficiente = 0.0293, efecto significativo (p = 0.0000). En un modelo Probit, un aumento en esta variable aumenta el índice latente asociado a la probabilidad del evento.
+
+=== EVALUACIÓN DEL MODELO ===
+Threshold usado: 0.5000
+Accuracy: 0.8543
+Precision: 0.8932
+Recall: 0.9197
+F1: 0.9063
+AUC: 0.9070
+
+Matriz de confusión:
+Predicho     0     1
+Real                
+0         1499   842
+1          615  7044
+
+=== ANÁLISIS AUTOMÁTICO ===
+Thresholds evaluados: 0.1 - 0.9
+Mejor threshold sugerido: 0.4000
+F1 máximo: 0.9065
+
+=== DIAGNÓSTICO AUTOMÁTICO ===
+⚠ Ligera tendencia a falsos positivos.
+✔ Buen poder predictivo (AUC > 0.9).
+
+=== COMPARACIÓN DE MODELOS ===
+Modelo    AUC     F1 Accuracy  Score
+ Logit 0.9070 0.9066   0.8550 0.8568
+Probit 0.9070 0.9063   0.8543 0.8567
+
+No hay diferencia sustancial entre Logit y Probit.
+
+Ambos modelos muestran desempeño muy similar.
+
+=== BALANCE DE CLASES ===
+Clase 0: 23.41%
+Clase 1: 76.59%
+
+=== DIAGNÓSTICO AVANZADO ===
+⚠ Ligera tendencia a falsos positivos.
+✔ Buen poder predictivo (AUC > 0.9).
+
+=== RECOMENDACIÓN FINAL ===
+No hay una recomendación fuerte entre Logit y Probit.
+Motivo: No hay diferencia sustancial entre Logit y Probit. Ambos modelos muestran desempeño muy similar.
+Score de referencia: 0.8568
+
+STDERR:
+<vacío>
+
+================================================================================
+
+[5] Logit patológico -> OK
+Descripción: Debe detectar separación perfecta / invalidez.
+Comando: /home/carlos/work/sara/.venv/bin/python src/cli.py --method logit --file datos/ejemplo2.csv --y aprobado --x horas_estudio asistencia --threshold 0.5
+Exit code: 0
+
+STDOUT:
+=== DATASET ===
+   aprobado  horas_estudio  asistencia
+0         1              5          90
+1         0              1          60
+2         1              6          95
+3         0              2          70
+4         1              4          80
+
+=== VALIDACIONES ===
+
+Advertencias:
+ - Muy pocas observaciones: 8. Se recomiendan al menos 10
+ - Alta correlación entre 'horas_estudio' y 'asistencia': 0.9073
+
+=== ADVERTENCIAS DEL MODELO ===
+ - Separación perfecta detectada: el modelo no es confiable (predicción perfecta).
+ - El modelo no converge: los resultados pueden ser inestables.
+
+=== RESULTADOS DEL MODELO ===
+
+
+Información general:
+ - Método: Modelo Logit
+ - Variable dependiente: aprobado
+ - Observaciones: 8
+ - Grados de libertad (modelo): 2
+ - Grados de libertad (residuos): 5
+ - Tipo de covarianza: nonrobust
+
+Medidas de ajuste:
+ - Log-verosimilitud: -0.0000
+ - AIC: 6.0000
+ - BIC: 6.2383
+ - Pseudo R-cuadrado: 1.0000
+
+Coeficientes:
+     Variable Coeficiente Error estándar Estadístico Valor p       IC 2.5%     IC 97.5%
+        const    318.8145   1121133.1730      0.0003  0.9998 -2197061.8265 2197699.4555
+horas_estudio     79.7934    131276.3800      0.0006  0.9995  -257217.1834  257376.7703
+   asistencia     -7.7168     20125.0267     -0.0004  0.9997   -39452.0442   39436.6107
+
+Diagnóstico básico:
+ - Durbin-Watson: no aplica a Logit
+ - Número de condición: no disponible
+
+Interpretación rápida:
+ - El modelo presenta advertencias importantes.
+ - La interpretación de coeficientes y valores p puede no ser confiable.
+
+=== EVALUACIÓN DEL MODELO ===
+Threshold usado: 0.5000
+Accuracy: 1.0000
+Precision: 1.0000
+Recall: 1.0000
+F1: 1.0000
+AUC: 1.0000
+
+Matriz de confusión:
+Predicho  0  1
+Real          
+0         4  0
+1         0  4
+
+=== ANÁLISIS AUTOMÁTICO ===
+Thresholds evaluados: 0.1 - 0.9
+Mejor threshold sugerido: 0.1000
+F1 máximo: 1.0000
+
+=== DIAGNÓSTICO AUTOMÁTICO ===
+⚠ Modelo inválido (separación perfecta detectada).
+⚠ Métricas perfectas pueden deberse a un dataset patológico, no a un buen modelo.
+
+=== COMPARACIÓN DE MODELOS ===
+Modelo    AUC     F1 Accuracy  Score
+ Logit 1.0000 1.0000   1.0000 0.6000
+Probit 1.0000 1.0000   1.0000 0.6000
+
+No hay diferencia sustancial entre Logit y Probit.
+
+Ambos modelos muestran desempeño muy similar.
+
+=== BALANCE DE CLASES ===
+Clase 0: 50.00%
+Clase 1: 50.00%
+
+=== DIAGNÓSTICO AVANZADO ===
+✘ Modelo inválido (separación perfecta detectada).
+⚠ Métricas perfectas pueden deberse a un dataset patológico, no a un buen modelo.
+
+=== RECOMENDACIÓN FINAL ===
+No hay una recomendación fuerte entre Logit y Probit.
+Motivo: No hay diferencia sustancial entre Logit y Probit. Ambos modelos muestran desempeño muy similar.
+Score de referencia: 0.6000
+
+STDERR:
+<vacío>
+
+================================================================================
+
+[6] Probit patológico -> OK
+Descripción: Debe detectar separación perfecta / invalidez con probit.
+Comando: /home/carlos/work/sara/.venv/bin/python src/cli.py --method probit --file datos/ejemplo2.csv --y aprobado --x horas_estudio asistencia --threshold 0.5
+Exit code: 0
+
+STDOUT:
+=== DATASET ===
+   aprobado  horas_estudio  asistencia
+0         1              5          90
+1         0              1          60
+2         1              6          95
+3         0              2          70
+4         1              4          80
+
+=== VALIDACIONES ===
+
+Advertencias:
+ - Muy pocas observaciones: 8. Se recomiendan al menos 10
+ - Alta correlación entre 'horas_estudio' y 'asistencia': 0.9073
+
+=== ADVERTENCIAS DEL MODELO ===
+ - Separación perfecta detectada: el modelo no es confiable (predicción perfecta).
+ - El modelo no converge: los resultados pueden ser inestables.
+
+=== RESULTADOS DEL MODELO ===
+
+
+Información general:
+ - Método: Modelo Probit
+ - Variable dependiente: aprobado
+ - Observaciones: 8
+ - Grados de libertad (modelo): 2
+ - Grados de libertad (residuos): 5
+ - Tipo de covarianza: nonrobust
+
+Medidas de ajuste:
+ - Log-verosimilitud: -0.0000
+ - AIC: 6.0000
+ - BIC: 6.2383
+ - Pseudo R-cuadrado: 1.0000
+
+Coeficientes:
+     Variable Coeficiente  Error estándar Estadístico Valor p          IC 2.5%        IC 97.5%
+        const     83.5577 4373447102.0648      0.0000  1.0000 -8571798724.7804 8571798891.8957
+horas_estudio     24.1336  364453944.6172      0.0000  1.0000  -714316581.3396  714316629.6068
+   asistencia     -2.1680   72890785.6727     -0.0000  1.0000  -142863316.8912  142863312.5553
+
+Diagnóstico básico:
+ - Durbin-Watson: no aplica a Probit
+ - Número de condición: no disponible
+
+Interpretación rápida:
+ - El modelo presenta advertencias importantes.
+ - La interpretación de coeficientes y valores p puede no ser confiable.
+
+=== EVALUACIÓN DEL MODELO ===
+Threshold usado: 0.5000
+Accuracy: 1.0000
+Precision: 1.0000
+Recall: 1.0000
+F1: 1.0000
+AUC: 1.0000
+
+Matriz de confusión:
+Predicho  0  1
+Real          
+0         4  0
+1         0  4
+
+=== ANÁLISIS AUTOMÁTICO ===
+Thresholds evaluados: 0.1 - 0.9
+Mejor threshold sugerido: 0.1000
+F1 máximo: 1.0000
+
+=== DIAGNÓSTICO AUTOMÁTICO ===
+⚠ Modelo inválido (separación perfecta detectada).
+⚠ Métricas perfectas pueden deberse a un dataset patológico, no a un buen modelo.
+
+=== COMPARACIÓN DE MODELOS ===
+Modelo    AUC     F1 Accuracy  Score
+ Logit 1.0000 1.0000   1.0000 0.6000
+Probit 1.0000 1.0000   1.0000 0.6000
+
+No hay diferencia sustancial entre Logit y Probit.
+
+Ambos modelos muestran desempeño muy similar.
+
+=== BALANCE DE CLASES ===
+Clase 0: 50.00%
+Clase 1: 50.00%
+
+=== DIAGNÓSTICO AVANZADO ===
+✘ Modelo inválido (separación perfecta detectada).
+⚠ Métricas perfectas pueden deberse a un dataset patológico, no a un buen modelo.
+
+=== RECOMENDACIÓN FINAL ===
+No hay una recomendación fuerte entre Logit y Probit.
+Motivo: No hay diferencia sustancial entre Logit y Probit. Ambos modelos muestran desempeño muy similar.
+Score de referencia: 0.6000
+
+STDERR:
+<vacío>
+
+================================================================================
+
+[7] Logit threshold 0.1 -> OK
+Descripción: Debe favorecer recall y aumentar falsos positivos.
+Comando: /home/carlos/work/sara/.venv/bin/python src/cli.py --method logit --file datos/logit_grande.csv --y aprobado --x horas_estudio asistencia --threshold 0.1
+Exit code: 0
+
+STDOUT:
+=== DATASET ===
+   aprobado  horas_estudio  asistencia
+0         1              6          76
+1         1              3          79
+2         1              7          79
+3         1              4          52
+4         1              6          92
+
+=== VALIDACIONES ===
+OK: no se encontraron problemas
+
+=== RESULTADOS DEL MODELO ===
+
+
+Información general:
+ - Método: Modelo Logit
+ - Variable dependiente: aprobado
+ - Observaciones: 10000
+ - Grados de libertad (modelo): 2
+ - Grados de libertad (residuos): 9997
+ - Tipo de covarianza: nonrobust
+
+Medidas de ajuste:
+ - Log-verosimilitud: -3179.0335
+ - AIC: 6364.0669
+ - BIC: 6385.6979
+ - Pseudo R-cuadrado: 0.4158
+
+Coeficientes:
+     Variable Coeficiente Error estándar Estadístico Valor p IC 2.5% IC 97.5%
+        const     -5.0862         0.1898    -26.7996  0.0000 -5.4582  -4.7142
+horas_estudio      0.8051         0.0181     44.4711  0.0000  0.7697   0.8406
+   asistencia      0.0513         0.0023     22.0190  0.0000  0.0467   0.0558
+
+Diagnóstico básico:
+ - Durbin-Watson: no aplica a Logit
+ - Número de condición: no disponible
+
+Interpretación rápida:
+ - horas_estudio: coeficiente = 0.8051, efecto significativo (p = 0.0000). En un modelo Logit, un aumento en esta variable aumenta el logaritmo de las odds del evento.
+ - asistencia: coeficiente = 0.0513, efecto significativo (p = 0.0000). En un modelo Logit, un aumento en esta variable aumenta el logaritmo de las odds del evento.
+
+=== EVALUACIÓN DEL MODELO ===
+Threshold usado: 0.1000
+Accuracy: 0.7782
+Precision: 0.7762
+Recall: 0.9982
+F1: 0.8733
+AUC: 0.9070
+
+Matriz de confusión:
+Predicho    0     1
+Real               
+0         137  2204
+1          14  7645
+
+=== ANÁLISIS AUTOMÁTICO ===
+Thresholds evaluados: 0.1 - 0.9
+Mejor threshold sugerido: 0.5000
+F1 máximo: 0.9066
+
+=== DIAGNÓSTICO AUTOMÁTICO ===
+⚠ Ligera tendencia a falsos positivos.
+✔ Buen poder predictivo (AUC > 0.9).
+
+=== COMPARACIÓN DE MODELOS ===
+Modelo    AUC     F1 Accuracy  Score
+ Logit 0.9070 0.8733   0.7782 0.8435
+Probit 0.9070 0.8716   0.7746 0.8428
+
+Mejor modelo: Logit (según AUC)
+
+=== BALANCE DE CLASES ===
+Clase 0: 23.41%
+Clase 1: 76.59%
+
+=== DIAGNÓSTICO AVANZADO ===
+⚠ Ligera tendencia a falsos positivos.
+✔ Buen poder predictivo (AUC > 0.9).
+
+=== RECOMENDACIÓN FINAL ===
+Modelo recomendado: Logit
+Motivo: mayor AUC y mejor balance precision/recall
+Score: 0.8435
+
+STDERR:
+<vacío>
+
+================================================================================
+
+[8] Logit threshold 0.9 -> OK
+Descripción: Debe favorecer precision y aumentar falsos negativos.
+Comando: /home/carlos/work/sara/.venv/bin/python src/cli.py --method logit --file datos/logit_grande.csv --y aprobado --x horas_estudio asistencia --threshold 0.9
+Exit code: 0
+
+STDOUT:
+=== DATASET ===
+   aprobado  horas_estudio  asistencia
+0         1              6          76
+1         1              3          79
+2         1              7          79
+3         1              4          52
+4         1              6          92
+
+=== VALIDACIONES ===
+OK: no se encontraron problemas
+
+=== RESULTADOS DEL MODELO ===
+
+
+Información general:
+ - Método: Modelo Logit
+ - Variable dependiente: aprobado
+ - Observaciones: 10000
+ - Grados de libertad (modelo): 2
+ - Grados de libertad (residuos): 9997
+ - Tipo de covarianza: nonrobust
+
+Medidas de ajuste:
+ - Log-verosimilitud: -3179.0335
+ - AIC: 6364.0669
+ - BIC: 6385.6979
+ - Pseudo R-cuadrado: 0.4158
+
+Coeficientes:
+     Variable Coeficiente Error estándar Estadístico Valor p IC 2.5% IC 97.5%
+        const     -5.0862         0.1898    -26.7996  0.0000 -5.4582  -4.7142
+horas_estudio      0.8051         0.0181     44.4711  0.0000  0.7697   0.8406
+   asistencia      0.0513         0.0023     22.0190  0.0000  0.0467   0.0558
+
+Diagnóstico básico:
+ - Durbin-Watson: no aplica a Logit
+ - Número de condición: no disponible
+
+Interpretación rápida:
+ - horas_estudio: coeficiente = 0.8051, efecto significativo (p = 0.0000). En un modelo Logit, un aumento en esta variable aumenta el logaritmo de las odds del evento.
+ - asistencia: coeficiente = 0.0513, efecto significativo (p = 0.0000). En un modelo Logit, un aumento en esta variable aumenta el logaritmo de las odds del evento.
+
+=== EVALUACIÓN DEL MODELO ===
+Threshold usado: 0.9000
+Accuracy: 0.7308
+Precision: 0.9740
+Recall: 0.6663
+F1: 0.7913
+AUC: 0.9070
+
+Matriz de confusión:
+Predicho     0     1
+Real                
+0         2205   136
+1         2556  5103
+
+=== ANÁLISIS AUTOMÁTICO ===
+Thresholds evaluados: 0.1 - 0.9
+Mejor threshold sugerido: 0.5000
+F1 máximo: 0.9066
+
+=== DIAGNÓSTICO AUTOMÁTICO ===
+⚠ Ligera tendencia a falsos negativos.
+✔ Buen poder predictivo (AUC > 0.9).
+
+=== COMPARACIÓN DE MODELOS ===
+Modelo    AUC     F1 Accuracy  Score
+ Logit 0.9070 0.7913   0.7308 0.8107
+Probit 0.9070 0.7794   0.7191 0.8060
+
+Mejor modelo: Logit (según AUC)
+
+=== BALANCE DE CLASES ===
+Clase 0: 23.41%
+Clase 1: 76.59%
+
+=== DIAGNÓSTICO AVANZADO ===
+⚠ Ligera tendencia a falsos negativos.
+✔ Buen poder predictivo (AUC > 0.9).
+
+=== RECOMENDACIÓN FINAL ===
+Modelo recomendado: Logit
+Motivo: mayor AUC y mejor balance precision/recall
+Score: 0.8107
+
+STDERR:
+<vacío>
+
+================================================================================
+
+[9] Exportación AUTO -> OK
+Descripción: Debe exportar reporte y CSVs con nombres automáticos.
+Comando: /home/carlos/work/sara/.venv/bin/python src/cli.py --method logit --file datos/logit_grande.csv --y aprobado --x horas_estudio asistencia --threshold 0.5 --out auto --out-csv auto --out-pred auto
+Exit code: 0
+
+STDOUT:
+=== DATASET ===
+   aprobado  horas_estudio  asistencia
+0         1              6          76
+1         1              3          79
+2         1              7          79
+3         1              4          52
+4         1              6          92
+
+=== VALIDACIONES ===
+OK: no se encontraron problemas
+
+=== RESULTADOS DEL MODELO ===
+
+
+Información general:
+ - Método: Modelo Logit
+ - Variable dependiente: aprobado
+ - Observaciones: 10000
+ - Grados de libertad (modelo): 2
+ - Grados de libertad (residuos): 9997
+ - Tipo de covarianza: nonrobust
+
+Medidas de ajuste:
+ - Log-verosimilitud: -3179.0335
+ - AIC: 6364.0669
+ - BIC: 6385.6979
+ - Pseudo R-cuadrado: 0.4158
+
+Coeficientes:
+     Variable Coeficiente Error estándar Estadístico Valor p IC 2.5% IC 97.5%
+        const     -5.0862         0.1898    -26.7996  0.0000 -5.4582  -4.7142
+horas_estudio      0.8051         0.0181     44.4711  0.0000  0.7697   0.8406
+   asistencia      0.0513         0.0023     22.0190  0.0000  0.0467   0.0558
+
+Diagnóstico básico:
+ - Durbin-Watson: no aplica a Logit
+ - Número de condición: no disponible
+
+Interpretación rápida:
+ - horas_estudio: coeficiente = 0.8051, efecto significativo (p = 0.0000). En un modelo Logit, un aumento en esta variable aumenta el logaritmo de las odds del evento.
+ - asistencia: coeficiente = 0.0513, efecto significativo (p = 0.0000). En un modelo Logit, un aumento en esta variable aumenta el logaritmo de las odds del evento.
+
+=== EVALUACIÓN DEL MODELO ===
+Threshold usado: 0.5000
+Accuracy: 0.8550
+Precision: 0.8950
+Recall: 0.9184
+F1: 0.9066
+AUC: 0.9070
+
+Matriz de confusión:
+Predicho     0     1
+Real                
+0         1516   825
+1          625  7034
+
+=== ANÁLISIS AUTOMÁTICO ===
+Thresholds evaluados: 0.1 - 0.9
+Mejor threshold sugerido: 0.5000
+F1 máximo: 0.9066
+
+=== DIAGNÓSTICO AUTOMÁTICO ===
+⚠ Ligera tendencia a falsos positivos.
+✔ Buen poder predictivo (AUC > 0.9).
+
+=== COMPARACIÓN DE MODELOS ===
+Modelo    AUC     F1 Accuracy  Score
+ Logit 0.9070 0.9066   0.8550 0.8568
+Probit 0.9070 0.9063   0.8543 0.8567
+
+No hay diferencia sustancial entre Logit y Probit.
+
+Ambos modelos muestran desempeño muy similar.
+
+=== BALANCE DE CLASES ===
+Clase 0: 23.41%
+Clase 1: 76.59%
+
+=== DIAGNÓSTICO AVANZADO ===
+⚠ Ligera tendencia a falsos positivos.
+✔ Buen poder predictivo (AUC > 0.9).
+
+=== RECOMENDACIÓN FINAL ===
+No hay una recomendación fuerte entre Logit y Probit.
+Motivo: No hay diferencia sustancial entre Logit y Probit. Ambos modelos muestran desempeño muy similar.
+Score de referencia: 0.8568
+
+Reporte TXT exportado en: resultados/logit_grande_logit_reporte.txt
+Coeficientes CSV exportados en: resultados/logit_grande_logit_coeficientes.csv
+Predicciones CSV exportadas en: resultados/logit_grande_logit_predicciones.csv
+
+STDERR:
+<vacío>
+
+================================================================================
+
+[10] Validación reporte exportado -> OK
+Descripción: Verifica que el TXT exportado incluya los bloques nuevos.
+Comando: verificación interna de archivo exportado
+Exit code: 0
+
+STDOUT:
+=== RESULTADOS DEL MODELO ===
+
+Validaciones:
+ - OK: no se encontraron problemas
+
+Información general:
+ - Método: Modelo Logit
+ - Variable dependiente: aprobado
+ - Observaciones: 10000
+ - Grados de libertad (modelo): 2
+ - Grados de libertad (residuos): 9997
+ - Tipo de covarianza: nonrobust
+
+Medidas de ajuste:
+ - Log-verosimilitud: -3179.0335
+ - AIC: 6364.0669
+ - BIC: 6385.6979
+ - Pseudo R-cuadrado: 0.4158
+
+Coeficientes:
+     Variable Coeficiente Error estándar Estadístico Valor p IC 2.5% IC 97.5%
+        const     -5.0862         0.1898    -26.7996  0.0000 -5.4582  -4.7142
+horas_estudio      0.8051         0.0181     44.4711  0.0000  0.7697   0.8406
+   asistencia      0.0513         0.0023     22.0190  0.0000  0.0467   0.0558
+
+Diagnóstico básico:
+ - Durbin-Watson: no aplica a Logit
+ - Número de condición: no disponible
+
+Evaluación del modelo:
+ - Threshold usado: 0.5000
+ - Accuracy: 0.8550
+ - Precision: 0.8950
+ - Recall: 0.9184
+ - F1: 0.9066
+ - AUC: 0.9070
+
+Matriz de confusión:
+Predicho     0     1
+Real                
+0         1516   825
+1          625  7034
+
+Análisis automático:
+ - Thresholds evaluados: 0.1 - 0.9
+ - Mejor threshold sugerido: 0.5000
+ - F1 máximo: 0.9066
+
+Diagnóstico automático:
+⚠ Ligera tendencia a falsos positivos.
+✔ Buen poder predictivo (AUC > 0.9).
+
+Comparación de modelos:
+Modelo    AUC     F1 Accuracy  Score
+ Logit 0.9070 0.9066   0.8550 0.8568
+Probit 0.9070 0.9063   0.8543 0.8567
+
+No hay diferencia sustancial entre Logit y Probit.
+Ambos modelos muestran desempeño muy similar.
+
+Balance de clases:
+ - Clase 0: 23.41%
+ - Clase 1: 76.59%
+
+Diagnóstico avanzado:
+⚠ Ligera tendencia a falsos positivos.
+✔ Buen poder predictivo (AUC > 0.9).
+
+Recomendación final:
+No hay una recomendación fuerte entre Logit y Probit.
+Motivo: No hay diferencia sustancial entre Logit y Probit. Ambos modelos muestran desempeño muy similar.
+Score de referencia: 0.8568
+
+Interpretación rápida:
+ - horas_estudio: coeficiente = 0.8051, efecto significativo (p = 0.0000). En un modelo Logit, un aumento en esta variable aumenta el logaritmo de las odds del evento.
+ - asistencia: coeficiente = 0.0513, efecto significativo (p = 0.0000). En un modelo Logit, un aumento en esta variable aumenta el logaritmo de las odds del evento.
+
+
+STDERR:
+<vacío>
+
+================================================================================
+
+PRUEBAS QUE DEBEN FALLAR DE FORMA CONTROLADA
+--------------------------------------------------------------------------------
+[1] Error por columna inexistente -> OK
+Descripción: Debe cortar limpio por columna inexistente.
+Comando: /home/carlos/work/sara/.venv/bin/python src/cli.py --method logit --file datos/logit_grande.csv --y aprobadoo --x horas_estudio asistencia
+Exit code: 1
+
+STDOUT:
+=== DATASET ===
+   aprobado  horas_estudio  asistencia
+0         1              6          76
+1         1              3          79
+2         1              7          79
+3         1              4          52
+4         1              6          92
+
+=== VALIDACIONES ===
+
+Errores:
+ - Faltan columnas en el dataset: ['aprobadoo']
+
+No se puede continuar hasta corregir los errores.
+
+STDERR:
+<vacío>
+
+================================================================================
+
+[2] Error por threshold inválido -> OK
+Descripción: Debe rechazar threshold fuera de [0, 1].
+Comando: /home/carlos/work/sara/.venv/bin/python src/cli.py --method logit --file datos/logit_grande.csv --y aprobado --x horas_estudio asistencia --threshold 1.2
+Exit code: 2
+
+STDOUT:
+<vacío>
+
+STDERR:
+usage: cli.py [-h] --method {ols,logit,probit} --file FILE --y Y --x X [X ...]
+              [--threshold THRESHOLD] [--out OUT] [--out-csv OUT_CSV]
+              [--out-pred OUT_PRED]
+cli.py: error: argument --threshold: El threshold debe estar entre 0 y 1.
+
+================================================================================
