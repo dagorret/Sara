@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
+from scipy.stats import kurtosis, skew
+from statsmodels.stats.stattools import durbin_watson, jarque_bera, omni_normtest
 
 from desktop_app.models.dataset_model import DatasetModel
 from src.core.compare import compare_datasets, compare_model_results, compare_states
@@ -62,6 +64,11 @@ class DatasetService:
 
     def build_report_bundle(self, result, metrics: dict, method: str) -> dict[str, str]:
         normalized_method = str(method).lower()
+        full_markdown = self._build_full_markdown_report(
+            result,
+            metrics=metrics,
+            method=normalized_method,
+        )
         return {
             "simple": generate_simple_report(result, metrics=metrics, method=normalized_method),
             "technical": generate_technical_report(result, metrics=metrics, method=normalized_method),
@@ -70,12 +77,12 @@ class DatasetService:
                 metrics=metrics,
                 method=normalized_method,
             ),
-            "markdown": generate_paper_report(
+            "markdown": generate_interpretative_report(
                 result,
                 metrics=metrics,
                 method=normalized_method,
-                output_format="markdown",
             ),
+            "full_markdown": full_markdown,
             "latex": generate_paper_report(
                 result,
                 metrics=metrics,
@@ -201,3 +208,68 @@ class DatasetService:
         metrics_b: dict | None = None,
     ):
         return compare_model_results(result_a, result_b, metrics_a=metrics_a, metrics_b=metrics_b)
+
+    def _build_full_markdown_report(self, result, metrics: dict, method: str) -> str:
+        base_paper = generate_paper_report(
+            result,
+            metrics=metrics,
+            method=method,
+            output_format="markdown",
+        )
+        diagnostics = self._build_diagnostics_section(result)
+        interpretation = generate_interpretative_report(result, metrics=metrics, method=method)
+
+        sections = [base_paper]
+        if diagnostics:
+            sections.append(diagnostics)
+        sections.append("## Interpretación\n\n" + interpretation)
+        return "\n\n".join(section for section in sections if section.strip())
+
+    def _build_diagnostics_section(self, result) -> str:
+        residuals = self._extract_residuals(result)
+        lines = ["## Diagnóstico estadístico", ""]
+
+        if residuals is not None and len(residuals) > 0:
+            try:
+                lines.append(f"- Skewness: {float(skew(residuals, bias=False)):.4f}")
+            except Exception:
+                lines.append("- Skewness: N/A")
+            try:
+                lines.append(f"- Kurtosis: {float(kurtosis(residuals, fisher=False, bias=False)):.4f}")
+            except Exception:
+                lines.append("- Kurtosis: N/A")
+            try:
+                jb_stat, jb_pvalue, _, _ = jarque_bera(residuals)
+                lines.append(f"- Jarque-Bera: {float(jb_stat):.4f}")
+                lines.append(f"- JB p-value: {float(jb_pvalue):.4f}")
+            except Exception:
+                lines.append("- Jarque-Bera: N/A")
+            try:
+                omni_stat, omni_pvalue = omni_normtest(residuals)
+                lines.append(f"- Omnibus normality: {float(omni_stat):.4f}")
+                lines.append(f"- Omnibus p-value: {float(omni_pvalue):.4f}")
+            except Exception:
+                lines.append("- Omnibus normality: N/A")
+            try:
+                lines.append(f"- Durbin-Watson: {float(durbin_watson(residuals)):.4f}")
+            except Exception:
+                lines.append("- Durbin-Watson: N/A")
+        else:
+            lines.append("- Residuales no disponibles para diagnóstico completo.")
+
+        try:
+            lines.append(f"- Condition number: {float(result.condition_number):.4f}")
+        except Exception:
+            lines.append("- Condition number: N/A")
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def _extract_residuals(result):
+        try:
+            residuals = getattr(result, "resid", None)
+            if residuals is None:
+                return None
+            return pd.Series(residuals).dropna()
+        except Exception:
+            return None

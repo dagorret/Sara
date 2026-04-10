@@ -72,6 +72,8 @@ class MainController:
         self.view.export_txt_requested.connect(self.export_txt)
         self.view.export_csv_requested.connect(self.export_csv)
         self.view.copy_report_requested.connect(self.copy_report)
+        self.view.copy_full_report_requested.connect(self.copy_full_report)
+        self.view.export_full_report_requested.connect(self.export_full_report)
         self.view.show_logs_requested.connect(self.show_logs)
         self.view.show_settings_requested.connect(self.show_settings_placeholder)
         self.view.variable_selection_changed.connect(self._update_analysis_state)
@@ -302,6 +304,7 @@ class MainController:
             return
         markdown = self._metadata_to_markdown(metadata)
         self.view.show_report(markdown, title="Reporte principal: metadata del dataset")
+        self.view.show_full_report(markdown)
         self.view.focus_results("Reporte")
         self.view.show_feedback(f"Metadata visible para dataset '{self.dataset.table_name}'.")
 
@@ -417,6 +420,7 @@ class MainController:
         self.view.show_coefficients(coefficients)
         self.view.show_interpretation(reports["interpretative"])
         self.view.show_report(reports["markdown"], title="Reporte principal: markdown")
+        self.view.show_full_report(reports["full_markdown"])
         self.view.show_latex(reports["latex"])
         self.view.focus_results("Reporte")
         self._update_analysis_state()
@@ -493,6 +497,40 @@ class MainController:
             return
         QApplication.clipboard().setText(self.current_reports.get("markdown", ""))
         self.view.show_feedback("Reporte copiado al portapapeles.")
+
+    def copy_full_report(self) -> None:
+        if not self.current_reports:
+            self.view.show_feedback("No hay reporte completo para copiar todavía.", error=True)
+            return
+        QApplication.clipboard().setText(self.current_reports.get("full_markdown", ""))
+        self.view.show_feedback("Reporte completo copiado al portapapeles.")
+
+    def export_full_report(self) -> None:
+        if not self.current_reports:
+            self.view.show_feedback("No hay reporte completo para exportar todavía.", error=True)
+            return
+
+        default_name = f"reporte_completo_{self.current_model_type or 'modelo'}.txt"
+        output_path, _ = QFileDialog.getSaveFileName(
+            self.view,
+            "Exportar reporte completo",
+            str(Path("resultados") / default_name),
+            "Text files (*.txt);;Markdown (*.md);;All files (*)",
+        )
+        if not output_path:
+            return
+
+        try:
+            path = self.dataset_service.export_report_text(
+                self.current_reports["full_markdown"],
+                output_path,
+            )
+        except Exception as error:
+            log.exception("Could not export full report")
+            self.view.show_feedback(f"No se pudo exportar el reporte completo: {error}", error=True)
+            return
+
+        self.view.show_feedback(f"Reporte completo exportado en {path}")
 
     def save_analysis(self) -> None:
         if self.dataset is None:

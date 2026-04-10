@@ -2,9 +2,7 @@
 
 # SARA
 
-## Sistema Académico para Reproducibilidad y Análisis
-
-SARA es una plataforma académica orientada al **análisis estadístico**, la **econometría aplicada** y la **reproducibilidad científica**, diseñada para su uso en **docencia universitaria**, **investigación** y **trabajo analítico profesional**.
+## Plataforma de análisis estadístico y econométrico con reproducibilidad
 
 ![Python](https://img.shields.io/badge/Python-3.12-blue)
 ![DuckDB](https://img.shields.io/badge/DuckDB-Analytical%20DB-orange)
@@ -12,234 +10,129 @@ SARA es una plataforma académica orientada al **análisis estadístico**, la **
 ![License](https://img.shields.io/badge/License-Citation--Required-lightgrey)
 ![Status](https://img.shields.io/badge/Status-Active-brightgreen)
 ![Platform](https://img.shields.io/badge/Platform-Linux-blue)
----
-
-# 🧠 ¿Qué es SARA?
-
-SARA es una herramienta que permite:
-
-* analizar datasets de forma interactiva
-* aplicar modelos econométricos (OLS, Logit, Probit)
-* evaluar resultados con métricas estadísticas
-* generar reportes automáticos interpretables
-* reproducir análisis completos a partir de su estado
-
-El sistema está diseñado bajo el principio de:
-
-> **reproducibilidad del análisis**, donde cada resultado puede reconstruirse a partir del dataset y las decisiones analíticas tomadas.
 
 ---
 
-# ⚙️ Tecnologías utilizadas
-
-### 🔹 Core analítico
-
-* **Python 3.12**
-* **DuckDB** (base de datos analítica embebida)
-* **Pandas / NumPy**
-* **Statsmodels**
-
----
-
-### 🔹 Interfaz de usuario
-
-* **PySide6 (Qt)**
-* Arquitectura desacoplada (core independiente de la UI)
-
----
-
-### 🔹 Componentes adicionales
-
-* Validación robusta de datos
-* Sistema de logging
-* Generación automática de reportes
-* Soporte para CLI
-
----
-
-# 📊 Base teórica
-
-SARA se apoya en fundamentos de:
-
-### 🔹 Estadística
-
-* inferencia estadística
-* estimación de parámetros
-* pruebas de hipótesis
-
----
-
-### 🔹 Econometría
-
-* regresión lineal (OLS)
-* modelos de elección binaria:
-
-  * Logit
-  * Probit
-
----
-
-### 🔹 Ciencia de datos
-
-* análisis exploratorio
-* evaluación de modelos (R², AUC, accuracy)
-* validación de datos
-
----
-
-### 🔹 Reproducibilidad científica
-
-* separación entre datos y estado analítico
-* persistencia de configuraciones
-* ejecución reproducible
-
----
-
-# 🚀 Uso del sistema
-
-SARA puede utilizarse de dos formas:
-
----
-
-## 🔹 1. Línea de comandos (CLI)
-
-Permite ejecutar análisis directamente desde terminal.
-
-### Ejemplo OLS:
-
-```bash
-python src/cli.py --method ols --file datos/ejemplo.csv --y ingreso --x educacion experiencia
-```
-
----
-
-### Ejemplo Logit:
-
-```bash
-python src/cli.py --method logit --file datos/logit_grande.csv --y aprobado --x horas_estudio asistencia --threshold 0.5
-```
-
----
-
-## 🔹 2. Aplicación desktop
-
-Interfaz gráfica que permite:
-
-1. cargar datasets
-2. aplicar filtros
-3. seleccionar variables
-4. ejecutar modelos
-5. visualizar resultados en tiempo real
-
-Incluye:
-
-* panel de control
-* tabla de datos
-* panel de resultados con tabs
-* reportes automáticos
-
----
-
-# 🐧 Instalación en Linux
-
-## 🔹 1. Clonar repositorio
+## ⚡ Quick Start
 
 ```bash
 git clone https://github.com/tu_usuario/sara.git
 cd sara
-```
-
----
-
-## 🔹 2. Crear entorno virtual
-
-```bash
 python3 -m venv .venv
 source .venv/bin/activate
-```
-
----
-
-## 🔹 3. Instalar dependencias
-
-```bash
 pip install -r requirements.txt
-```
-
----
-
-## 🔹 4. Ejecutar aplicación desktop
-
-```bash
 python -m desktop_app.main
 ```
 
 ---
 
-## 🔹 5. Ejecutar CLI
+## ✨ Características principales
+
+* Modelos econométricos: OLS, Logit, Probit
+* Base analítica con DuckDB
+* UI interactiva tipo **Stata moderno**
+* Reportes automáticos (interpretativos y técnicos)
+* Reproducibilidad del análisis
+* CLI + Desktop
+
+---
+
+# 🧠 ¿Qué es SARA?
+
+SARA es una plataforma académica para:
+
+* análisis estadístico interactivo
+* econometría aplicada
+* generación de reportes
+* reproducibilidad científica
+
+> Cada resultado puede reconstruirse a partir del dataset y las decisiones analíticas.
+
+---
+
+# ⚙️ Tecnologías
+
+### Core
+
+* Python 3.12
+* DuckDB
+* Pandas / NumPy
+* Statsmodels
+
+### UI
+
+* PySide6 (Qt)
+* Arquitectura desacoplada
+
+---
+
+# 🚀 Uso
+
+## CLI
 
 ```bash
-python src/cli.py --help
+python src/cli.py --method ols --file datos/ejemplo.csv --y ingreso --x educacion experiencia
+```
+
+## Desktop
+
+* cargar dataset
+* aplicar filtros
+* seleccionar variables
+* ejecutar modelos
+* ver resultados en tabs
+
+> Se incluyen datasets en `datos/` para pruebas rápidas.
+
+---
+
+# 🐧 Instalación en Linux
+
+```bash
+git clone https://github.com/tu_usuario/sara.git
+cd sara
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python -m desktop_app.main
 ```
 
 ---
 
-# 📁 Estructura del proyecto
+# 📁 Estructura
 
-```text
+```
 src/core/        → motor analítico
 desktop_app/     → interfaz gráfica
-datos/           → datasets de ejemplo
-resultados/      → salidas generadas
-data/            → base DuckDB (sara.db)
-tests/           → pruebas del sistema
+datos/           → datasets
+resultados/      → outputs
+data/            → DuckDB (sara.db)
+tests/           → tests
 ```
 
 ---
 
 # 💾 Persistencia
 
-SARA utiliza **DuckDB** (`data/sara.db`) como base de datos local para almacenar:
+DuckDB (`data/sara.db`) almacena:
 
-* datasets cargados
-* estados de análisis
-* resultados intermedios
-
----
-
-# 🔮 Futuro del proyecto
-
-Actualmente SARA está disponible para **Linux**.
-
-En futuras versiones se prevé soporte para:
-
-* 🟦 Windows (.exe)
-* 🍎 macOS (.app)
-
-mediante empaquetado multiplataforma.
+* datasets
+* estados
+* resultados
 
 ---
 
-# 🎯 Objetivo del proyecto
+# 🔮 Futuro
 
-SARA busca integrar:
-
-* herramientas académicas tradicionales
-* con herramientas modernas de análisis
-
-proporcionando un sistema:
-
-* accesible
-* reproducible
-* extensible
+* Windows (.exe)
+* macOS (.app)
 
 ---
 
 # 📜 Licencia
 
-Este proyecto es de uso libre con la siguiente condición:
-
-> **Se permite el uso, modificación y distribución del software siempre que se cite la fuente original.**
+> Uso libre con atribución obligatoria.
+> Cualquier uso, modificación o distribución debe citar la fuente original.
 
 ---
 
@@ -251,6 +144,4 @@ Este proyecto es de uso libre con la siguiente condición:
 
 # 💬 Conclusión
 
-SARA no es solo una herramienta de cálculo:
-
-> es un sistema diseñado para analizar, interpretar y reproducir resultados de manera clara, estructurada y académicamente rigurosa.
+SARA es un sistema para analizar, interpretar y reproducir resultados de forma clara y rigurosa.

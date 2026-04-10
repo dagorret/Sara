@@ -40,6 +40,11 @@ class DataFrameModel(QAbstractTableModel):
             return None
 
         value = self._dataframe.iat[index.row(), index.column()]
+        if role == Qt.ItemDataRole.BackgroundRole and self._highlight_pvalues:
+            color = self._coefficient_background(index.row())
+            if color is not None:
+                return color
+            return None
         if role == Qt.ItemDataRole.ForegroundRole and self._highlight_pvalues:
             color = self._coefficient_color(index.row())
             if color is not None:
@@ -77,5 +82,16 @@ class DataFrameModel(QAbstractTableModel):
         except Exception:
             return None
         if pvalue < 0.05:
-            return QColor("#1d6f42")
-        return QColor("#7a7f87")
+            return QColor("#1f5132")
+        return QColor("#5f6368")
+
+    def _coefficient_background(self, row: int):
+        if "p-value" not in self._dataframe.columns:
+            return None
+        try:
+            pvalue = float(self._dataframe.iloc[row]["p-value"])
+        except Exception:
+            return None
+        if pvalue < 0.05:
+            return QColor("#e6f4ea")
+        return QColor("#f1f3f4")

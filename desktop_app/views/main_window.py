@@ -53,6 +53,8 @@ class MainWindow(QMainWindow):
     export_txt_requested = Signal()
     export_csv_requested = Signal()
     copy_report_requested = Signal()
+    copy_full_report_requested = Signal()
+    export_full_report_requested = Signal()
     show_logs_requested = Signal()
     show_settings_requested = Signal()
     variable_selection_changed = Signal()
@@ -102,10 +104,13 @@ class MainWindow(QMainWindow):
         self.metrics_text = QTextBrowser()
         self.interpretation_text = QTextBrowser()
         self.report_text = QTextBrowser()
+        self.full_report_text = QTextBrowser()
         self.latex_text = QPlainTextEdit()
         self.report_mode_label = QLabel("Reporte principal: markdown")
         self.copy_report_button = QPushButton("Copiar reporte")
         self.export_coefficients_button = QPushButton("Exportar coeficientes CSV")
+        self.copy_full_report_button = QPushButton("Copiar todo")
+        self.export_full_report_button = QPushButton("Exportar TXT")
         self.logs_text = QPlainTextEdit()
 
         self.log_dock = QDockWidget("Logs", self)
@@ -259,6 +264,7 @@ class MainWindow(QMainWindow):
         self.metrics_text.setReadOnly(True)
         self.interpretation_text.setReadOnly(True)
         self.report_text.setReadOnly(True)
+        self.full_report_text.setReadOnly(True)
         self.latex_text.setReadOnly(True)
         self.logs_text.setReadOnly(True)
 
@@ -283,6 +289,18 @@ class MainWindow(QMainWindow):
         report_layout.addWidget(self.report_text)
         report_tab.setLayout(report_layout)
         self.results_tabs.addTab(report_tab, "Reporte")
+        full_report_tab = QWidget(self)
+        full_report_layout = QVBoxLayout()
+        full_report_layout.setContentsMargins(8, 8, 8, 8)
+        full_report_actions_layout = QHBoxLayout()
+        full_report_actions_layout.addWidget(QLabel("Documento completo"))
+        full_report_actions_layout.addStretch()
+        full_report_actions_layout.addWidget(self.copy_full_report_button)
+        full_report_actions_layout.addWidget(self.export_full_report_button)
+        full_report_layout.addLayout(full_report_actions_layout)
+        full_report_layout.addWidget(self.full_report_text)
+        full_report_tab.setLayout(full_report_layout)
+        self.results_tabs.addTab(full_report_tab, "Reporte completo")
 
         self.results_tabs.addTab(self._wrap_plain_text_tab(self.latex_text), "LaTeX")
 
@@ -380,6 +398,8 @@ class MainWindow(QMainWindow):
         self.next_page_button.clicked.connect(self.next_page_requested.emit)
         self.copy_report_button.clicked.connect(self.copy_report_requested.emit)
         self.export_coefficients_button.clicked.connect(self.export_csv_requested.emit)
+        self.copy_full_report_button.clicked.connect(self.copy_full_report_requested.emit)
+        self.export_full_report_button.clicked.connect(self.export_full_report_requested.emit)
         self.y_selector.currentTextChanged.connect(self._handle_variable_selection_change)
         self.x_selector.itemSelectionChanged.connect(self._handle_variable_selection_change)
 
@@ -387,15 +407,15 @@ class MainWindow(QMainWindow):
         self.setStyleSheet(
             """
             QMainWindow, QWidget {
-                background: #f6f4ee;
-                color: #1f2933;
+                background: #fbfbfa;
+                color: #222222;
                 font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
                 font-size: 13px;
             }
             QGroupBox {
-                background: #fbfaf6;
-                border: 1px solid #d8d1c2;
-                border-radius: 10px;
+                background: #ffffff;
+                border: 1px solid #d9d9d9;
+                border-radius: 6px;
                 margin-top: 12px;
                 padding: 14px 10px 10px 10px;
                 font-weight: 600;
@@ -404,53 +424,73 @@ class MainWindow(QMainWindow):
                 subcontrol-origin: margin;
                 left: 10px;
                 padding: 0 4px;
-                color: #5d4b37;
+                color: #3c4858;
             }
             QPushButton {
-                background: #204e4a;
-                color: #f7f6f1;
-                border: none;
-                border-radius: 8px;
-                padding: 8px 12px;
+                background: #ffffff;
+                color: #2b3a42;
+                border: 1px solid #cfd7df;
+                border-radius: 5px;
+                padding: 7px 12px;
                 font-weight: 600;
             }
             QPushButton:hover {
-                background: #2a645f;
+                background: #f4f7fa;
             }
             QPushButton:disabled {
-                background: #b6bebd;
-                color: #eef0ef;
+                background: #f2f2f2;
+                color: #a2a8ad;
+                border-color: #e1e1e1;
             }
             QComboBox, QLineEdit, QListWidget, QTableView, QTextBrowser, QPlainTextEdit, QTabWidget::pane {
-                background: #fffdf8;
-                border: 1px solid #d8d1c2;
-                border-radius: 8px;
+                background: #ffffff;
+                border: 1px solid #d9d9d9;
+                border-radius: 5px;
+            }
+            QTableView {
+                background-color: #ffffff;
+                alternate-background-color: #f5f5f5;
+                color: #222222;
+                gridline-color: #dddddd;
+                selection-background-color: #cce5ff;
+                selection-color: #222222;
             }
             QTabBar::tab {
-                background: #e4ddd0;
-                color: #31424f;
+                background: #f1f3f5;
+                color: #44515c;
                 padding: 8px 14px;
-                border-top-left-radius: 8px;
-                border-top-right-radius: 8px;
+                border-top-left-radius: 5px;
+                border-top-right-radius: 5px;
                 margin-right: 2px;
+                border: 1px solid #d9d9d9;
             }
             QTabBar::tab:selected {
-                background: #204e4a;
-                color: #f7f6f1;
+                background: #ffffff;
+                color: #1f3b59;
+                border-bottom-color: #ffffff;
             }
             QLabel {
-                color: #33424e;
+                color: #2f3b45;
             }
             QLabel#analysisStateLabel {
-                background: #efe7d8;
-                border: 1px solid #d8c7a8;
-                border-radius: 10px;
+                background: #f7f7f7;
+                border: 1px solid #dddddd;
+                border-radius: 6px;
                 padding: 10px 12px;
-                color: #4d3f2f;
+                color: #374151;
                 font-weight: 600;
+            }
+            QScrollArea {
+                background: #f7f7f7;
+                border: none;
+            }
+            QTextBrowser, QPlainTextEdit {
+                padding: 14px;
+                line-height: 1.45em;
             }
             """
         )
+        self._apply_document_styles()
 
     def _wrap_text_tab(self, widget: QTextBrowser) -> QWidget:
         container = QWidget(self)
@@ -657,6 +697,9 @@ class MainWindow(QMainWindow):
         self.report_mode_label.setText(title)
         self.report_text.setMarkdown(markdown)
 
+    def show_full_report(self, text: str) -> None:
+        self.full_report_text.setMarkdown(text)
+
     def show_latex(self, latex: str) -> None:
         self.latex_text.setPlainText(latex)
 
@@ -680,6 +723,7 @@ class MainWindow(QMainWindow):
             messages.get(state, messages["no_model"]),
             title="Reporte principal: estado actual",
         )
+        self.show_full_report(messages.get(state, messages["no_model"]))
 
     def clear_model_results(self) -> None:
         self.model_summary_text.setMarkdown("### Modelo\n\nNo hay resultados todavía.")
@@ -689,6 +733,9 @@ class MainWindow(QMainWindow):
             "### Interpretación\n\nLa interpretación automática aparecerá aquí."
         )
         self.show_report_empty_state("no_model")
+        self.show_full_report(
+            "### Reporte completo\n\nEl documento final del análisis aparecerá aquí."
+        )
         self.show_latex("% La salida LaTeX aparecerá aquí.")
 
     def focus_results(self, tab_name: str = "Reporte") -> None:
@@ -707,6 +754,50 @@ class MainWindow(QMainWindow):
 
     def get_log_handler(self) -> QtLogHandler:
         return self.log_handler
+
+    def _apply_document_styles(self) -> None:
+        document_style = """
+            body {
+                font-family: 'Georgia', 'Times New Roman', serif;
+                color: #222222;
+                line-height: 1.6;
+                max-width: 920px;
+                margin: 0 auto;
+            }
+            h1, h2, h3 {
+                color: #1f3b59;
+                margin-top: 1.2em;
+                margin-bottom: 0.45em;
+            }
+            p, li {
+                margin-bottom: 0.55em;
+            }
+            ul {
+                margin-left: 1.2em;
+            }
+            code {
+                background: #f3f4f6;
+                padding: 2px 4px;
+            }
+            table {
+                border-collapse: collapse;
+                width: 100%;
+                margin: 1em 0;
+            }
+            th, td {
+                border: 1px solid #dddddd;
+                padding: 6px 8px;
+                text-align: left;
+            }
+            th {
+                background: #f7f7f7;
+            }
+        """
+        self.model_summary_text.document().setDefaultStyleSheet(document_style)
+        self.metrics_text.document().setDefaultStyleSheet(document_style)
+        self.interpretation_text.document().setDefaultStyleSheet(document_style)
+        self.report_text.document().setDefaultStyleSheet(document_style)
+        self.full_report_text.document().setDefaultStyleSheet(document_style)
 
     def show_analysis_state(
         self,
