@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 import re
 
 import duckdb
 import pandas as pd
+
+from .config import DB_PATH
+
+
+log = logging.getLogger(__name__)
 
 
 def quote_identifier(identifier: str) -> str:
@@ -16,13 +22,14 @@ def quote_identifier(identifier: str) -> str:
 class DuckDBManager:
     _shared_connections: dict[str, duckdb.DuckDBPyConnection] = {}
 
-    def __init__(self, database_path: str = "data/sara.db") -> None:
+    def __init__(self, database_path: str = DB_PATH) -> None:
         self.database_path = str(Path(database_path).resolve())
         db_path = Path(self.database_path)
         db_path.parent.mkdir(parents=True, exist_ok=True)
 
         connection = self._shared_connections.get(self.database_path)
         if connection is None:
+            log.info("Opening DuckDB connection at %s", self.database_path)
             connection = duckdb.connect(database=self.database_path)
             self._shared_connections[self.database_path] = connection
 
@@ -64,6 +71,7 @@ class DuckDBManager:
         csv_path = str(Path(path).resolve())
         resolved_table_name = self.generate_table_name(table_name)
         table_ref = quote_identifier(resolved_table_name)
+        log.info("Loading CSV into DuckDB table '%s' from %s", resolved_table_name, csv_path)
         self.connection.execute(
             f"CREATE OR REPLACE TABLE {table_ref} AS "
             "SELECT * FROM read_csv_auto(?)",

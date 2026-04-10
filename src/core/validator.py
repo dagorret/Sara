@@ -1,8 +1,16 @@
 from __future__ import annotations
 
-import pandas as pd
+import logging
 
+import pandas as pd
+from pandas.api.types import is_numeric_dtype
+
+from .config import SIGNIFICANCE_LEVEL
 from .dataset import Dataset
+from .exceptions import ValidationError
+
+
+log = logging.getLogger(__name__)
 
 
 def _obtener_frame(data, columns: list[str]) -> pd.DataFrame:
@@ -10,9 +18,72 @@ def _obtener_frame(data, columns: list[str]) -> pd.DataFrame:
         return data.select(columns).query().copy()
 
     if isinstance(data, pd.DataFrame):
+        missing = [column for column in columns if column not in data.columns]
+        if missing:
+            raise ValidationError(f"Faltan columnas en el dataset: {missing}")
         return data[columns].copy()
 
-    raise TypeError("Se esperaba un Dataset o un pandas DataFrame.")
+    raise ValidationError("Se esperaba un Dataset o un pandas DataFrame.")
+
+
+def _dataset_columns(data) -> list[str]:
+    if isinstance(data, Dataset):
+        return data.get_base_columns()
+    if isinstance(data, pd.DataFrame):
+        return list(data.columns)
+    raise ValidationError("Se esperaba un Dataset o un pandas DataFrame.")
+
+
+def validate_columns_exist(dataset, columns):
+    requested = [str(column) for column in columns]
+    available = set(_dataset_columns(dataset))
+    missing = [column for column in requested if column not in available]
+    if missing:
+        raise ValidationError(f"Columnas no encontradas en el dataset: {missing}")
+
+
+def validate_numeric_columns(dataset, columns):
+    validate_columns_exist(dataset, columns)
+    requested = [str(column) for column in columns]
+
+    if isinstance(dataset, Dataset):
+        metadata = dataset.get_metadata()
+        non_numeric = [
+            column
+            for column in requested
+            if not Dataset._is_numeric_type(str(metadata["types"][column]))
+        ]
+    else:
+        non_numeric = [column for column in requested if not is_numeric_dtype(dataset[column])]
+
+    if non_numeric:
+        raise ValidationError(
+            f"Las columnas deben ser numéricas para modelar: {non_numeric}"
+        )
+
+
+def validate_no_nulls(dataset, columns):
+    validate_columns_exist(dataset, columns)
+    requested = [str(column) for column in columns]
+
+    if isinstance(dataset, Dataset):
+        metadata = dataset.get_metadata()
+        invalid = {
+            column: int(metadata["null_counts"][column])
+            for column in requested
+            if int(metadata["null_counts"][column]) > 0
+        }
+    else:
+        null_counts = dataset[requested].isnull().sum()
+        invalid = {
+            column: int(count)
+            for column, count in null_counts.items()
+            if int(count) > 0
+        }
+
+    if invalid:
+        detail = ", ".join(f"{column}={count}" for column, count in invalid.items())
+        raise ValidationError(f"Hay valores nulos en columnas requeridas: {detail}")
 
 
 def validar_variable_binaria(data, y_col):
@@ -41,33 +112,19 @@ def validar_variable_binaria(data, y_col):
 
 
 def validar_columnas(data, y_col, x_cols):
-    errores = []
-    if isinstance(data, Dataset):
-        columnas = set(data.get_columns())
-    elif isinstance(data, pd.DataFrame):
-        columnas = set(data.columns)
-    else:
-        raise TypeError("Se esperaba un Dataset o un pandas DataFrame.")
-
-    columnas_faltantes = [col for col in [y_col, *x_cols] if col not in columnas]
-    if columnas_faltantes:
-        errores.append(f"Faltan columnas en el dataset: {columnas_faltantes}")
-    return errores
+    try:
+        validate_columns_exist(data, [y_col, *x_cols])
+    except ValidationError as exc:
+        return [str(exc)]
+    return []
 
 
 def validar_nulos(data, y_col, x_cols):
-    errores = []
-    cols = [y_col, *x_cols]
-    frame = _obtener_frame(data, cols)
-    nulos = frame[cols].isnull().sum()
-    columnas_con_nulos = nulos[nulos > 0]
-
-    if not columnas_con_nulos.empty:
-        errores.append(
-            "Hay valores faltantes en: "
-            + ", ".join(f"{col}={cant}" for col, cant in columnas_con_nulos.items())
-        )
-    return errores
+    try:
+        validate_no_nulls(data, [y_col, *x_cols])
+    except ValidationError as exc:
+        return [str(exc)]
+    return []
 
 
 def validar_constantes(data, x_cols):
@@ -123,9 +180,16 @@ def ejecutar_validaciones(data, y_col, x_cols, method=None):
     errores = []
     advertencias = []
 
+    log.info("Running validations for method=%s, y=%s, X=%s", method, y_col, x_cols)
+
     errores.extend(validar_columnas(data, y_col, x_cols))
     if errores:
         return errores, advertencias
+
+    try:
+        validate_numeric_columns(data, [y_col, *x_cols])
+    except ValidationError as exc:
+        errores.append(str(exc))
 
     errores.extend(validar_nulos(data, y_col, x_cols))
     if method in {"logit", "probit"}:
@@ -135,3 +199,9 @@ def ejecutar_validaciones(data, y_col, x_cols, method=None):
     advertencias.extend(validar_muestra(data))
     advertencias.extend(validar_correlacion(data, x_cols))
     return errores, advertencias
+
+
+def es_significativo(pvalue: float | None, alpha: float = SIGNIFICANCE_LEVEL) -> bool:
+    if pvalue is None:
+        return False
+    return float(pvalue) < float(alpha)

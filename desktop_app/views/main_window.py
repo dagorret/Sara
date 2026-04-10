@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import pandas as pd
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
+    QDockWidget,
     QFormLayout,
+    QFrame,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -15,488 +17,536 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QMainWindow,
     QPushButton,
+    QPlainTextEdit,
     QScrollArea,
     QSplitter,
+    QStatusBar,
     QTableView,
-    QTextEdit,
-    QTreeWidget,
-    QTreeWidgetItem,
+    QTabWidget,
+    QTextBrowser,
     QVBoxLayout,
     QWidget,
 )
 
+from desktop_app.views.log_handler import QtLogHandler
 from desktop_app.views.table_model import DataFrameModel
 
 
 class MainWindow(QMainWindow):
     load_csv_requested = Signal()
+    save_analysis_requested = Signal()
+    load_analysis_requested = Signal()
+    exit_requested = Signal()
+    show_metadata_requested = Signal()
+    clear_filters_requested = Signal()
     next_page_requested = Signal()
     prev_page_requested = Signal()
     dataset_selected = Signal(str)
     add_filter_requested = Signal()
     remove_filter_requested = Signal()
-    clear_filters_requested = Signal()
-    save_analysis_requested = Signal()
-    load_analysis_requested = Signal()
-    analysis_name_selected = Signal(str)
-    save_version_requested = Signal()
-    load_version_requested = Signal()
-    create_branch_requested = Signal()
-    compare_versions_requested = Signal()
-    apply_visible_columns_requested = Signal()
     run_ols_requested = Signal()
     run_logit_requested = Signal()
     run_probit_requested = Signal()
+    show_simple_report_requested = Signal()
+    show_technical_report_requested = Signal()
+    show_interpretative_report_requested = Signal()
+    export_txt_requested = Signal()
+    export_csv_requested = Signal()
+    copy_report_requested = Signal()
+    show_logs_requested = Signal()
+    show_settings_requested = Signal()
+    variable_selection_changed = Signal()
 
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("Sara Desktop")
-        self.resize(1600, 920)
+        self.setWindowTitle("SARA Analytics Desktop")
+        self.resize(1760, 980)
 
         self.dataset_selector = QComboBox()
-        self.dataset_info_label = QLabel("Dataset: ninguno")
-        self.saved_analysis_selector = QComboBox()
-        self.analysis_selector = QComboBox()
-        self.history_tree = QTreeWidget()
+        self.dataset_rows_label = QLabel("Filas: 0")
+        self.dataset_columns_label = QLabel("Columnas: 0")
+        self.dataset_filters_label = QLabel("Filtros activos: 0")
+
         self.filter_column_selector = QComboBox()
         self.filter_operator_selector = QComboBox()
         self.filter_input = QLineEdit()
         self.active_filters_list = QListWidget()
-        self.columns_list = QListWidget()
-        self.visible_columns_list = QListWidget()
+
         self.y_selector = QComboBox()
         self.x_selector = QListWidget()
-        self.compare_version_a_selector = QComboBox()
-        self.compare_version_b_selector = QComboBox()
 
-        self.load_csv_button = QPushButton("Cargar CSV")
         self.add_filter_button = QPushButton("Agregar filtro")
-        self.remove_filter_button = QPushButton("Eliminar filtro")
+        self.remove_filter_button = QPushButton("Quitar seleccionado")
         self.clear_filters_button = QPushButton("Limpiar filtros")
-        self.save_analysis_button = QPushButton("Guardar analisis")
-        self.load_analysis_button = QPushButton("Cargar analisis")
-        self.save_version_button = QPushButton("Nueva version")
-        self.create_branch_button = QPushButton("Crear rama")
-        self.load_version_button = QPushButton("Restaurar version")
-        self.compare_versions_button = QPushButton("Comparar")
-        self.apply_visible_columns_button = QPushButton("Aplicar columnas")
         self.run_ols_button = QPushButton("Run OLS")
         self.run_logit_button = QPushButton("Run Logit")
         self.run_probit_button = QPushButton("Run Probit")
         self.prev_page_button = QPushButton("Anterior")
         self.next_page_button = QPushButton("Siguiente")
 
-        self.data_context_label = QLabel("Archivo: ninguno")
-        self.page_info_label = QLabel("Mostrando filas 0-0 de 0 (Página 0)")
-        self.model_status_label = QLabel("Estado del modelo: sin ejecutar")
-        self.model_summary_label = QLabel("Modelo: ninguno")
-        self.metrics_text = QTextEdit()
-        self.interpretation_text = QTextEdit()
-        self.report_text = QTextEdit()
-        self.compare_results_text = QTextEdit()
+        self.table_info_label = QLabel("Mostrando filas 0-0 de 0 | Filtros: 0 | Orden: sin orden")
+        self.page_info_label = QLabel("Página 0 / 0")
+        self.dataset_badge_label = QLabel("Sin dataset activo")
+        self.feedback_label = QLabel("Listo")
+        self.analysis_state_label = QLabel(
+            "Dataset: ninguno | Filtros: sin filtros | Modelo: sin ejecutar | Variables: -"
+        )
 
         self.table_view = QTableView()
-        self.compare_table_view = QTableView()
-        self.coefficients_table_view = QTableView()
         self.table_model = DataFrameModel()
-        self.compare_table_model = DataFrameModel()
-        self.coefficients_table_model = DataFrameModel()
+        self.coefficients_table_view = QTableView()
+        self.coefficients_table_model = DataFrameModel(highlight_pvalues=True)
+
+        self.results_tabs = QTabWidget()
+        self.model_summary_text = QTextBrowser()
+        self.metrics_text = QTextBrowser()
+        self.interpretation_text = QTextBrowser()
+        self.report_text = QTextBrowser()
+        self.latex_text = QPlainTextEdit()
+        self.report_mode_label = QLabel("Reporte principal: markdown")
+        self.copy_report_button = QPushButton("Copiar reporte")
+        self.export_coefficients_button = QPushButton("Exportar coeficientes CSV")
+        self.logs_text = QPlainTextEdit()
+
+        self.log_dock = QDockWidget("Logs", self)
+        self.log_handler = QtLogHandler(self.append_log_line)
 
         self._setup_ui()
         self._connect_actions()
+        self._refresh_run_buttons()
 
     def _setup_ui(self) -> None:
+        self.setStatusBar(QStatusBar(self))
+        self.statusBar().showMessage("Listo")
+
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
 
-        splitter = QSplitter(Qt.Orientation.Horizontal, self)
-        splitter.addWidget(self._build_control_panel())
-        splitter.addWidget(self._build_data_panel())
-        splitter.addWidget(self._build_results_panel())
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 1)
-        splitter.setStretchFactor(2, 0)
-        splitter.setSizes([340, 720, 540])
+        root_splitter = QSplitter(Qt.Orientation.Horizontal, self)
+        root_splitter.addWidget(self._build_control_panel())
+        root_splitter.addWidget(self._build_workspace_panel())
+        root_splitter.setSizes([380, 1280])
+        root_splitter.setCollapsible(0, False)
+        root_splitter.setCollapsible(1, False)
 
-        root_layout = QVBoxLayout()
-        root_layout.addWidget(splitter)
-        central_widget.setLayout(root_layout)
+        layout = QVBoxLayout()
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.addWidget(root_splitter)
+        central_widget.setLayout(layout)
 
+        self._setup_results_tabs()
+        self._setup_logs_dock()
         self._setup_menu()
+        self._apply_styles()
 
     def _build_control_panel(self) -> QWidget:
         content = QWidget(self)
         layout = QVBoxLayout()
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(12)
 
-        self.columns_list.setAlternatingRowColors(True)
-        self.visible_columns_list.setSelectionMode(
-            QAbstractItemView.SelectionMode.MultiSelection
-        )
-        self.active_filters_list.setSelectionMode(
-            QAbstractItemView.SelectionMode.SingleSelection
-        )
-        self.x_selector.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
-        self.history_tree.setColumnCount(2)
-        self.history_tree.setHeaderLabels(["Rama / Version", "Fecha"])
-        self.history_tree.setRootIsDecorated(True)
-        self.history_tree.setAlternatingRowColors(True)
-        self.filter_input.setPlaceholderText("Valor del filtro")
         self.filter_operator_selector.addItems(["=", "!=", ">", ">=", "<", "<=", "LIKE"])
-        self.dataset_info_label.setWordWrap(True)
+        self.filter_input.setPlaceholderText("Valor del filtro")
+        self.active_filters_list.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.x_selector.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
 
         dataset_group = QGroupBox("Dataset")
         dataset_layout = QVBoxLayout()
-        dataset_layout.addWidget(self.load_csv_button)
         dataset_layout.addWidget(self.dataset_selector)
-        dataset_layout.addWidget(self.dataset_info_label)
+        dataset_layout.addWidget(self.dataset_rows_label)
+        dataset_layout.addWidget(self.dataset_columns_label)
+        dataset_layout.addWidget(self.dataset_filters_label)
         dataset_group.setLayout(dataset_layout)
 
-        filter_group = QGroupBox("Filtros")
-        filter_layout = QVBoxLayout()
+        filters_group = QGroupBox("Filtros")
+        filters_layout = QVBoxLayout()
         filter_form = QFormLayout()
         filter_form.addRow("Columna", self.filter_column_selector)
         filter_form.addRow("Operador", self.filter_operator_selector)
         filter_form.addRow("Valor", self.filter_input)
-        filter_buttons = QHBoxLayout()
-        filter_buttons.addWidget(self.add_filter_button)
-        filter_buttons.addWidget(self.remove_filter_button)
-        filter_layout.addLayout(filter_form)
-        filter_layout.addLayout(filter_buttons)
-        filter_layout.addWidget(self.clear_filters_button)
-        filter_layout.addWidget(QLabel("Filtros activos"))
-        filter_layout.addWidget(self.active_filters_list)
-        filter_group.setLayout(filter_layout)
+        filters_layout.addLayout(filter_form)
+        filters_layout.addWidget(self.add_filter_button)
+        filters_layout.addWidget(self.remove_filter_button)
+        filters_layout.addWidget(self.clear_filters_button)
+        filters_layout.addWidget(QLabel("Filtros activos"))
+        filters_layout.addWidget(self.active_filters_list)
+        filters_group.setLayout(filters_layout)
 
         variables_group = QGroupBox("Variables")
         variables_layout = QVBoxLayout()
         variables_layout.addWidget(QLabel("Variable dependiente (Y)"))
         variables_layout.addWidget(self.y_selector)
-        variables_layout.addWidget(QLabel("Variables independientes (X)"))
+        variables_layout.addWidget(QLabel("Variables explicativas (X)"))
         variables_layout.addWidget(self.x_selector)
-        variables_layout.addWidget(QLabel("Columnas visibles"))
-        variables_layout.addWidget(self.visible_columns_list)
-        variables_layout.addWidget(self.apply_visible_columns_button)
-        variables_layout.addWidget(QLabel("Metadata de columnas"))
-        variables_layout.addWidget(self.columns_list)
         variables_group.setLayout(variables_layout)
 
-        model_group = QGroupBox("Modelos")
-        model_layout = QVBoxLayout()
-        model_layout.addWidget(self.run_ols_button)
-        model_layout.addWidget(self.run_logit_button)
-        model_layout.addWidget(self.run_probit_button)
-        model_layout.addWidget(self.model_status_label)
-        model_group.setLayout(model_layout)
-
-        session_group = QGroupBox("Sesiones e Historial")
-        session_layout = QVBoxLayout()
-        session_layout.addWidget(QLabel("Sesiones guardadas"))
-        session_layout.addWidget(self.saved_analysis_selector)
-        session_buttons = QHBoxLayout()
-        session_buttons.addWidget(self.save_analysis_button)
-        session_buttons.addWidget(self.load_analysis_button)
-        session_layout.addLayout(session_buttons)
-        session_layout.addWidget(QLabel("Análisis versionado"))
-        session_layout.addWidget(self.analysis_selector)
-        session_layout.addWidget(self.history_tree)
-        history_buttons = QHBoxLayout()
-        history_buttons.addWidget(self.save_version_button)
-        history_buttons.addWidget(self.create_branch_button)
-        session_layout.addLayout(history_buttons)
-        session_layout.addWidget(self.load_version_button)
-        session_group.setLayout(session_layout)
+        models_group = QGroupBox("Modelos")
+        models_layout = QVBoxLayout()
+        models_layout.addWidget(self.run_ols_button)
+        models_layout.addWidget(self.run_logit_button)
+        models_layout.addWidget(self.run_probit_button)
+        models_layout.addWidget(self.feedback_label)
+        models_group.setLayout(models_layout)
 
         layout.addWidget(dataset_group)
-        layout.addWidget(filter_group)
+        layout.addWidget(filters_group)
         layout.addWidget(variables_group)
-        layout.addWidget(model_group)
-        layout.addWidget(session_group)
+        layout.addWidget(models_group)
         layout.addStretch()
         content.setLayout(layout)
 
         scroll = QScrollArea(self)
         scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
         scroll.setWidget(content)
         return scroll
+
+    def _build_workspace_panel(self) -> QWidget:
+        splitter = QSplitter(Qt.Orientation.Vertical, self)
+        splitter.addWidget(self._build_data_panel())
+        splitter.addWidget(self._build_results_panel())
+        splitter.setSizes([520, 420])
+        splitter.setCollapsible(0, False)
+        splitter.setCollapsible(1, False)
+        return splitter
 
     def _build_data_panel(self) -> QWidget:
         panel = QWidget(self)
         layout = QVBoxLayout()
-        table_header_layout = QHBoxLayout()
-        pagination_layout = QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(10)
 
-        self.data_context_label.setWordWrap(True)
+        header_layout = QHBoxLayout()
+        header_layout.addWidget(self.dataset_badge_label)
+        header_layout.addStretch()
+
+        info_layout = QHBoxLayout()
+        self.table_info_label.setWordWrap(True)
+        info_layout.addWidget(self.table_info_label, 1)
+
+        pager_layout = QHBoxLayout()
+        pager_layout.addWidget(self.prev_page_button)
+        pager_layout.addWidget(self.next_page_button)
+        pager_layout.addWidget(self.page_info_label)
+        pager_layout.addStretch()
 
         self.table_view.setModel(self.table_model)
         self.table_view.setAlternatingRowColors(True)
         self.table_view.setSortingEnabled(False)
         self.table_view.horizontalHeader().setStretchLastSection(True)
 
-        table_header_layout.addWidget(self.data_context_label)
-        table_header_layout.addStretch()
-
-        pagination_layout.addWidget(self.prev_page_button)
-        pagination_layout.addWidget(self.next_page_button)
-        pagination_layout.addWidget(self.page_info_label)
-        pagination_layout.addStretch()
-
-        layout.addLayout(table_header_layout)
-        layout.addLayout(pagination_layout)
+        layout.addLayout(header_layout)
+        layout.addLayout(info_layout)
+        layout.addLayout(pager_layout)
         layout.addWidget(self.table_view)
         panel.setLayout(layout)
         return panel
 
     def _build_results_panel(self) -> QWidget:
-        content = QWidget(self)
+        panel = QWidget(self)
         layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+        self.analysis_state_label.setWordWrap(True)
+        self.analysis_state_label.setObjectName("analysisStateLabel")
+        layout.addWidget(self.analysis_state_label)
+        layout.addWidget(self.results_tabs)
+        panel.setLayout(layout)
+        return panel
 
+    def _setup_results_tabs(self) -> None:
+        self.model_summary_text.setReadOnly(True)
         self.metrics_text.setReadOnly(True)
         self.interpretation_text.setReadOnly(True)
         self.report_text.setReadOnly(True)
-        self.compare_results_text.setReadOnly(True)
+        self.latex_text.setReadOnly(True)
+        self.logs_text.setReadOnly(True)
 
         self.coefficients_table_view.setModel(self.coefficients_table_model)
-        self.compare_table_view.setModel(self.compare_table_model)
         self.coefficients_table_view.setAlternatingRowColors(True)
-        self.compare_table_view.setAlternatingRowColors(True)
         self.coefficients_table_view.horizontalHeader().setStretchLastSection(True)
-        self.compare_table_view.horizontalHeader().setStretchLastSection(True)
 
-        summary_group = QGroupBox("Resultado del Modelo")
-        summary_layout = QVBoxLayout()
-        self.model_summary_label.setWordWrap(True)
-        summary_layout.addWidget(self.model_summary_label)
-        summary_group.setLayout(summary_layout)
+        self.results_tabs.addTab(self._wrap_text_tab(self.model_summary_text), "Modelo")
+        self.results_tabs.addTab(self._wrap_text_tab(self.metrics_text), "Métricas")
+        self.results_tabs.addTab(self._wrap_table_tab(self.coefficients_table_view), "Coeficientes")
+        self.results_tabs.addTab(self._wrap_text_tab(self.interpretation_text), "Interpretación")
 
-        metrics_group = QGroupBox("Métricas")
-        metrics_layout = QVBoxLayout()
-        metrics_layout.addWidget(self.metrics_text)
-        metrics_group.setLayout(metrics_layout)
-
-        coefficients_group = QGroupBox("Coeficientes")
-        coefficients_layout = QVBoxLayout()
-        coefficients_layout.addWidget(self.coefficients_table_view)
-        coefficients_group.setLayout(coefficients_layout)
-
-        interpretation_group = QGroupBox("Interpretación Automática")
-        interpretation_layout = QVBoxLayout()
-        interpretation_layout.addWidget(self.interpretation_text)
-        interpretation_group.setLayout(interpretation_layout)
-
-        report_group = QGroupBox("Reporte Completo")
+        report_tab = QWidget(self)
         report_layout = QVBoxLayout()
+        report_layout.setContentsMargins(8, 8, 8, 8)
+        report_actions_layout = QHBoxLayout()
+        report_actions_layout.addWidget(self.report_mode_label)
+        report_actions_layout.addStretch()
+        report_actions_layout.addWidget(self.copy_report_button)
+        report_actions_layout.addWidget(self.export_coefficients_button)
+        report_layout.addLayout(report_actions_layout)
         report_layout.addWidget(self.report_text)
-        report_group.setLayout(report_layout)
+        report_tab.setLayout(report_layout)
+        self.results_tabs.addTab(report_tab, "Reporte")
 
-        compare_group = QGroupBox("Comparar")
-        compare_layout = QVBoxLayout()
-        compare_layout.addWidget(QLabel("Versión A"))
-        compare_layout.addWidget(self.compare_version_a_selector)
-        compare_layout.addWidget(QLabel("Versión B"))
-        compare_layout.addWidget(self.compare_version_b_selector)
-        compare_layout.addWidget(self.compare_versions_button)
-        compare_layout.addWidget(self.compare_results_text)
-        compare_layout.addWidget(self.compare_table_view)
-        compare_group.setLayout(compare_layout)
+        self.results_tabs.addTab(self._wrap_plain_text_tab(self.latex_text), "LaTeX")
 
-        layout.addWidget(summary_group)
-        layout.addWidget(metrics_group)
-        layout.addWidget(coefficients_group)
-        layout.addWidget(interpretation_group)
-        layout.addWidget(report_group)
-        layout.addWidget(compare_group)
-        content.setLayout(layout)
-
-        scroll = QScrollArea(self)
-        scroll.setWidgetResizable(True)
-        scroll.setWidget(content)
-        return scroll
+    def _setup_logs_dock(self) -> None:
+        self.log_dock.setWidget(self.logs_text)
+        self.log_dock.setFloating(False)
+        self.log_dock.hide()
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.log_dock)
 
     def _setup_menu(self) -> None:
-        file_menu = self.menuBar().addMenu("Archivo")
-        load_action = QAction("Cargar CSV", self)
+        menu_bar = self.menuBar()
+
+        file_menu = menu_bar.addMenu("Archivo")
+        load_action = QAction("Cargar dataset", self)
         load_action.triggered.connect(self.load_csv_requested.emit)
         file_menu.addAction(load_action)
 
+        save_analysis_action = QAction("Guardar análisis", self)
+        save_analysis_action.triggered.connect(self.save_analysis_requested.emit)
+        file_menu.addAction(save_analysis_action)
+
+        load_analysis_action = QAction("Cargar análisis", self)
+        load_analysis_action.triggered.connect(self.load_analysis_requested.emit)
+        file_menu.addAction(load_analysis_action)
+
+        file_menu.addSeparator()
+
+        exit_action = QAction("Salir", self)
+        exit_action.triggered.connect(self.exit_requested.emit)
+        file_menu.addAction(exit_action)
+
+        data_menu = menu_bar.addMenu("Datos")
+        metadata_action = QAction("Ver metadata", self)
+        metadata_action.triggered.connect(self.show_metadata_requested.emit)
+        data_menu.addAction(metadata_action)
+
+        reset_filters_action = QAction("Resetear filtros", self)
+        reset_filters_action.triggered.connect(self.clear_filters_requested.emit)
+        data_menu.addAction(reset_filters_action)
+
+        models_menu = menu_bar.addMenu("Modelos")
+        run_ols_action = QAction("Ejecutar OLS", self)
+        run_ols_action.triggered.connect(self.run_ols_requested.emit)
+        models_menu.addAction(run_ols_action)
+
+        run_logit_action = QAction("Ejecutar Logit", self)
+        run_logit_action.triggered.connect(self.run_logit_requested.emit)
+        models_menu.addAction(run_logit_action)
+
+        run_probit_action = QAction("Ejecutar Probit", self)
+        run_probit_action.triggered.connect(self.run_probit_requested.emit)
+        models_menu.addAction(run_probit_action)
+
+        reports_menu = menu_bar.addMenu("Reportes")
+        simple_report_action = QAction("Ver reporte simple", self)
+        simple_report_action.triggered.connect(self.show_simple_report_requested.emit)
+        reports_menu.addAction(simple_report_action)
+
+        technical_report_action = QAction("Ver reporte técnico", self)
+        technical_report_action.triggered.connect(self.show_technical_report_requested.emit)
+        reports_menu.addAction(technical_report_action)
+
+        interpretative_report_action = QAction("Ver reporte interpretativo", self)
+        interpretative_report_action.triggered.connect(self.show_interpretative_report_requested.emit)
+        reports_menu.addAction(interpretative_report_action)
+
+        reports_menu.addSeparator()
+
+        export_txt_action = QAction("Exportar TXT", self)
+        export_txt_action.triggered.connect(self.export_txt_requested.emit)
+        reports_menu.addAction(export_txt_action)
+
+        export_csv_action = QAction("Exportar CSV", self)
+        export_csv_action.triggered.connect(self.export_csv_requested.emit)
+        reports_menu.addAction(export_csv_action)
+
+        tools_menu = menu_bar.addMenu("Herramientas")
+        logs_action = QAction("Ver logs", self)
+        logs_action.triggered.connect(self.show_logs_requested.emit)
+        tools_menu.addAction(logs_action)
+
+        settings_action = QAction("Configuración", self)
+        settings_action.triggered.connect(self.show_settings_requested.emit)
+        tools_menu.addAction(settings_action)
+
     def _connect_actions(self) -> None:
-        self.load_csv_button.clicked.connect(self.load_csv_requested.emit)
-        self.next_page_button.clicked.connect(self.next_page_requested.emit)
-        self.prev_page_button.clicked.connect(self.prev_page_requested.emit)
         self.dataset_selector.currentTextChanged.connect(self.dataset_selected.emit)
         self.add_filter_button.clicked.connect(self.add_filter_requested.emit)
         self.remove_filter_button.clicked.connect(self.remove_filter_requested.emit)
         self.clear_filters_button.clicked.connect(self.clear_filters_requested.emit)
-        self.save_analysis_button.clicked.connect(self.save_analysis_requested.emit)
-        self.load_analysis_button.clicked.connect(self.load_analysis_requested.emit)
-        self.analysis_selector.currentTextChanged.connect(self.analysis_name_selected.emit)
-        self.save_version_button.clicked.connect(self.save_version_requested.emit)
-        self.create_branch_button.clicked.connect(self.create_branch_requested.emit)
-        self.load_version_button.clicked.connect(self.load_version_requested.emit)
-        self.compare_versions_button.clicked.connect(self.compare_versions_requested.emit)
-        self.apply_visible_columns_button.clicked.connect(
-            self.apply_visible_columns_requested.emit
-        )
         self.run_ols_button.clicked.connect(self.run_ols_requested.emit)
         self.run_logit_button.clicked.connect(self.run_logit_requested.emit)
         self.run_probit_button.clicked.connect(self.run_probit_requested.emit)
+        self.prev_page_button.clicked.connect(self.prev_page_requested.emit)
+        self.next_page_button.clicked.connect(self.next_page_requested.emit)
+        self.copy_report_button.clicked.connect(self.copy_report_requested.emit)
+        self.export_coefficients_button.clicked.connect(self.export_csv_requested.emit)
+        self.y_selector.currentTextChanged.connect(self._handle_variable_selection_change)
+        self.x_selector.itemSelectionChanged.connect(self._handle_variable_selection_change)
+
+    def _apply_styles(self) -> None:
+        self.setStyleSheet(
+            """
+            QMainWindow, QWidget {
+                background: #f6f4ee;
+                color: #1f2933;
+                font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+                font-size: 13px;
+            }
+            QGroupBox {
+                background: #fbfaf6;
+                border: 1px solid #d8d1c2;
+                border-radius: 10px;
+                margin-top: 12px;
+                padding: 14px 10px 10px 10px;
+                font-weight: 600;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 4px;
+                color: #5d4b37;
+            }
+            QPushButton {
+                background: #204e4a;
+                color: #f7f6f1;
+                border: none;
+                border-radius: 8px;
+                padding: 8px 12px;
+                font-weight: 600;
+            }
+            QPushButton:hover {
+                background: #2a645f;
+            }
+            QPushButton:disabled {
+                background: #b6bebd;
+                color: #eef0ef;
+            }
+            QComboBox, QLineEdit, QListWidget, QTableView, QTextBrowser, QPlainTextEdit, QTabWidget::pane {
+                background: #fffdf8;
+                border: 1px solid #d8d1c2;
+                border-radius: 8px;
+            }
+            QTabBar::tab {
+                background: #e4ddd0;
+                color: #31424f;
+                padding: 8px 14px;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+                margin-right: 2px;
+            }
+            QTabBar::tab:selected {
+                background: #204e4a;
+                color: #f7f6f1;
+            }
+            QLabel {
+                color: #33424e;
+            }
+            QLabel#analysisStateLabel {
+                background: #efe7d8;
+                border: 1px solid #d8c7a8;
+                border-radius: 10px;
+                padding: 10px 12px;
+                color: #4d3f2f;
+                font-weight: 600;
+            }
+            """
+        )
+
+    def _wrap_text_tab(self, widget: QTextBrowser) -> QWidget:
+        container = QWidget(self)
+        layout = QVBoxLayout()
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.addWidget(widget)
+        container.setLayout(layout)
+        return container
+
+    def _wrap_plain_text_tab(self, widget: QPlainTextEdit) -> QWidget:
+        container = QWidget(self)
+        layout = QVBoxLayout()
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.addWidget(widget)
+        container.setLayout(layout)
+        return container
+
+    def _wrap_table_tab(self, widget: QTableView) -> QWidget:
+        container = QWidget(self)
+        layout = QVBoxLayout()
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.addWidget(widget)
+        container.setLayout(layout)
+        return container
 
     def set_empty_state(self) -> None:
-        self.dataset_info_label.setText("Dataset: ninguno")
-        self.data_context_label.setText("Archivo: ninguno")
-        self.set_table_data(None, offset=0)
-        self.columns_list.clear()
+        self.dataset_rows_label.setText("Filas: 0")
+        self.dataset_columns_label.setText("Columnas: 0")
+        self.dataset_filters_label.setText("Filtros activos: 0")
+        self.dataset_badge_label.setText("Sin dataset activo")
+        self.table_info_label.setText("Mostrando filas 0-0 de 0 | Filtros: 0 | Orden: sin orden")
+        self.page_info_label.setText("Página 0 / 0")
         self.dataset_selector.blockSignals(True)
         self.dataset_selector.setCurrentIndex(-1)
         self.dataset_selector.blockSignals(False)
-        self.y_selector.clear()
-        self.x_selector.clear()
-        self.visible_columns_list.clear()
-        self.active_filters_list.clear()
-        self.saved_analysis_selector.clear()
-        self.analysis_selector.clear()
-        self.history_tree.clear()
         self.filter_column_selector.clear()
         self.filter_input.clear()
+        self.active_filters_list.clear()
+        self.y_selector.clear()
+        self.x_selector.clear()
+        self.show_table(None)
         self.clear_model_results()
-        self.compare_results_text.clear()
-        self.compare_table_model.set_dataframe(None)
-        self.set_dataset_window(0, 0, 0, 0)
-        self.set_pagination_enabled(has_previous=False, has_next=False)
-        self.set_model_status("Estado del modelo: sin ejecutar")
+        self.show_analysis_state(
+            dataset_name=None,
+            filters=None,
+            model_name=None,
+            y_column=None,
+            x_columns=None,
+        )
+        self.set_has_dataset(False)
+        self.show_feedback("Listo")
 
-    def clear_model_results(self) -> None:
-        self.model_summary_label.setText("Modelo: ninguno")
-        self.metrics_text.clear()
-        self.interpretation_text.clear()
-        self.report_text.clear()
-        self.coefficients_table_model.set_dataframe(None)
-
-    def set_file_info(self, text: str) -> None:
-        self.data_context_label.setText(text)
+    def show_feedback(self, text: str, *, error: bool = False) -> None:
+        self.feedback_label.setText(text)
+        self.feedback_label.setStyleSheet(
+            "color: #8f2d2d; font-weight: 600;" if error else "color: #204e4a; font-weight: 600;"
+        )
+        self.statusBar().showMessage(text)
 
     def show_dataset_info(
         self,
         *,
         dataset_name: str,
-        file_name: str,
         total_rows: int,
         total_columns: int,
         filters_count: int,
-        order_text: str,
     ) -> None:
-        self.dataset_info_label.setText(
-            f"Dataset activo: {dataset_name}\n"
-            f"Archivo: {file_name}\n"
-            f"Filas: {total_rows:,}\n"
-            f"Columnas: {total_columns:,}\n"
-            f"Filtros activos: {filters_count}\n"
-            f"Orden: {order_text}"
+        self.dataset_badge_label.setText(f"Dataset activo: {dataset_name}")
+        self.dataset_rows_label.setText(f"Filas: {total_rows:,}")
+        self.dataset_columns_label.setText(f"Columnas: {total_columns:,}")
+        self.dataset_filters_label.setText(f"Filtros activos: {filters_count}")
+
+    def show_table_context(
+        self,
+        *,
+        start_row: int,
+        end_row: int,
+        total_rows: int,
+        filters_count: int,
+        order_text: str,
+        page_number: int,
+        total_pages: int,
+    ) -> None:
+        self.table_info_label.setText(
+            f"Mostrando filas {start_row:,}-{end_row:,} de {total_rows:,} | "
+            f"Filtros: {filters_count} | Orden: {order_text}"
         )
+        self.page_info_label.setText(f"Página {page_number} / {total_pages}")
 
-    def show_table_context(self, text: str) -> None:
-        self.data_context_label.setText(text)
-
-    def set_table_data(self, dataframe, offset: int = 0) -> None:
+    def show_table(self, dataframe: pd.DataFrame | None, offset: int = 0) -> None:
         self.table_model.set_dataframe(dataframe, offset=offset)
         self.table_view.resizeColumnsToContents()
-
-    def show_table(self, dataframe, offset: int = 0) -> None:
-        self.set_table_data(dataframe, offset=offset)
-
-    def set_columns_metadata(self, columns_metadata: list[tuple[str, str]]) -> None:
-        self.columns_list.clear()
-        for column, dtype in columns_metadata:
-            self.columns_list.addItem(QListWidgetItem(f"{column} ({dtype})"))
 
     def add_dataset_option(self, table_name: str) -> None:
         if table_name and self.dataset_selector.findText(table_name) == -1:
             self.dataset_selector.addItem(table_name)
-
-    def set_analysis_options(self, analyses: list[dict]) -> None:
-        current_data = self.saved_analysis_selector.currentData()
-        self.saved_analysis_selector.blockSignals(True)
-        self.saved_analysis_selector.clear()
-        for analysis in analyses:
-            label = f"{analysis['name']} [{analysis['dataset']}]"
-            self.saved_analysis_selector.addItem(label, analysis["id"])
-        if current_data is not None:
-            index = self.saved_analysis_selector.findData(current_data)
-            if index >= 0:
-                self.saved_analysis_selector.setCurrentIndex(index)
-        self.saved_analysis_selector.blockSignals(False)
-
-    def set_analysis_name_options(self, names: list[str]) -> None:
-        current_text = self.analysis_selector.currentText()
-        self.analysis_selector.blockSignals(True)
-        self.analysis_selector.clear()
-        for name in names:
-            self.analysis_selector.addItem(name, name)
-        if current_text:
-            index = self.analysis_selector.findText(current_text)
-            if index >= 0:
-                self.analysis_selector.setCurrentIndex(index)
-        self.analysis_selector.blockSignals(False)
-
-    def set_version_options(self, versions: list[dict]) -> None:
-        current_version_id = self.get_selected_version_id()
-        self.history_tree.blockSignals(True)
-        self.history_tree.clear()
-
-        branch_items: dict[str, QTreeWidgetItem] = {}
-        for version in sorted(
-            versions,
-            key=lambda item: (str(item.get("branch") or "main"), -int(item["version"])),
-        ):
-            branch_name = str(version.get("branch") or "main")
-            branch_item = branch_items.get(branch_name)
-            if branch_item is None:
-                branch_item = QTreeWidgetItem([branch_name, ""])
-                branch_item.setData(0, Qt.ItemDataRole.UserRole, None)
-                self.history_tree.addTopLevelItem(branch_item)
-                branch_items[branch_name] = branch_item
-
-            created_at = version["created_at"]
-            timestamp = (
-                created_at.strftime("%Y-%m-%d %H:%M:%S")
-                if hasattr(created_at, "strftime")
-                else str(created_at)
-            )
-            version_label = f"v{version['version']}"
-            if version.get("parent_version"):
-                version_label += f" <- {version['parent_version']}"
-            item = QTreeWidgetItem([version_label, timestamp])
-            item.setData(0, Qt.ItemDataRole.UserRole, int(version["id"]))
-            item.setToolTip(
-                0,
-                f"{version['analysis_name']} | rama={branch_name} | dataset={version['dataset']}",
-            )
-            branch_item.addChild(item)
-
-        self.history_tree.expandAll()
-        if current_version_id is not None:
-            self._select_history_item(current_version_id)
-        self.history_tree.blockSignals(False)
-
-    def set_compare_version_options(self, versions: list[dict]) -> None:
-        current_a = self.compare_version_a_selector.currentData()
-        current_b = self.compare_version_b_selector.currentData()
-        for selector, current in (
-            (self.compare_version_a_selector, current_a),
-            (self.compare_version_b_selector, current_b),
-        ):
-            selector.blockSignals(True)
-            selector.clear()
-            for version in versions:
-                branch_name = version.get("branch") or "main"
-                selector.addItem(
-                    f"{version['analysis_name']} [{branch_name}] v{version['version']}",
-                    version["id"],
-                )
-            if current is not None:
-                index = selector.findData(current)
-                if index >= 0:
-                    selector.setCurrentIndex(index)
-            selector.blockSignals(False)
 
     def set_selected_dataset(self, table_name: str) -> None:
         index = self.dataset_selector.findText(table_name)
@@ -506,9 +556,8 @@ class MainWindow(QMainWindow):
             self.dataset_selector.blockSignals(False)
 
     def set_variable_options(self, columns: list[str]) -> None:
-        current_y = self.y_selector.currentText()
+        current_y = self.get_selected_y()
         selected_x = set(self.get_selected_x())
-        selected_visible = set(self.get_selected_visible_columns())
 
         self.y_selector.blockSignals(True)
         self.y_selector.clear()
@@ -520,17 +569,31 @@ class MainWindow(QMainWindow):
         self.y_selector.blockSignals(False)
 
         self.x_selector.clear()
-        self.visible_columns_list.clear()
         self.filter_column_selector.clear()
         self.filter_column_selector.addItems(columns)
         for column in columns:
-            x_item = QListWidgetItem(column)
-            x_item.setSelected(column in selected_x)
-            self.x_selector.addItem(x_item)
+            item = QListWidgetItem(column)
+            item.setSelected(column in selected_x)
+            self.x_selector.addItem(item)
+        self._refresh_run_buttons()
 
-            visible_item = QListWidgetItem(column)
-            visible_item.setSelected(column in selected_visible if selected_visible else True)
-            self.visible_columns_list.addItem(visible_item)
+    def set_selected_y(self, column: str) -> None:
+        index = self.y_selector.findText(column)
+        if index >= 0:
+            self.y_selector.setCurrentIndex(index)
+        self._refresh_run_buttons()
+
+    def set_selected_x(self, columns: list[str]) -> None:
+        selected = set(columns)
+        for index in range(self.x_selector.count()):
+            item = self.x_selector.item(index)
+            item.setSelected(item.text() in selected)
+        self._refresh_run_buttons()
+
+    def set_active_filters(self, filters: list[str]) -> None:
+        self.active_filters_list.clear()
+        for filter_text in filters:
+            self.active_filters_list.addItem(filter_text)
 
     def get_selected_y(self) -> str:
         return self.y_selector.currentText().strip()
@@ -538,130 +601,165 @@ class MainWindow(QMainWindow):
     def get_selected_x(self) -> list[str]:
         return [item.text() for item in self.x_selector.selectedItems()]
 
-    def get_filter_text(self) -> str:
-        return self.filter_input.text().strip()
-
     def get_selected_filter_column(self) -> str:
         return self.filter_column_selector.currentText().strip()
 
     def get_selected_filter_operator(self) -> str:
         return self.filter_operator_selector.currentText().strip()
 
-    def get_selected_visible_columns(self) -> list[str]:
-        return [item.text() for item in self.visible_columns_list.selectedItems()]
+    def get_filter_text(self) -> str:
+        return self.filter_input.text().strip()
 
-    def set_selected_visible_columns(self, columns: list[str]) -> None:
-        selected = set(columns)
-        for index in range(self.visible_columns_list.count()):
-            item = self.visible_columns_list.item(index)
-            item.setSelected(item.text() in selected)
-
-    def set_active_filters(self, filters: list[str]) -> None:
-        self.active_filters_list.clear()
-        for filter_text in filters:
-            self.active_filters_list.addItem(QListWidgetItem(filter_text))
+    def clear_filter_input(self) -> None:
+        self.filter_input.clear()
 
     def get_selected_filter_index(self) -> int:
-        row = self.active_filters_list.currentRow()
-        return row if row >= 0 else -1
+        return self.active_filters_list.currentRow()
 
-    def get_selected_analysis_id(self) -> int | None:
-        analysis_id = self.saved_analysis_selector.currentData()
-        return None if analysis_id is None else int(analysis_id)
+    def set_pagination_enabled(self, *, has_previous: bool, has_next: bool) -> None:
+        self.prev_page_button.setEnabled(has_previous)
+        self.next_page_button.setEnabled(has_next)
 
-    def get_selected_analysis_name(self) -> str:
-        return self.analysis_selector.currentText().strip()
+    def show_model_summary(self, result: dict[str, object]) -> None:
+        lines = [
+            f"### {result.get('model_name', 'Modelo')}",
+            "",
+            f"- **Fórmula:** `{result.get('formula', '-')}`",
+            f"- **Observaciones:** {result.get('observations', 0):,}",
+            f"- **Estado:** {result.get('status', '-')}",
+        ]
+        warnings = result.get("warnings") or []
+        if warnings:
+            lines.extend(["", "**Advertencias**"])
+            lines.extend(f"- {warning}" for warning in warnings)
+        self.model_summary_text.setMarkdown("\n".join(lines))
 
-    def get_selected_version_id(self) -> int | None:
-        current_item = self.history_tree.currentItem()
-        if current_item is None:
-            return None
-        version_id = current_item.data(0, Qt.ItemDataRole.UserRole)
-        return None if version_id is None else int(version_id)
-
-    def set_selected_version(self, version_id: int) -> None:
-        self._select_history_item(version_id)
-
-    def get_compare_version_ids(self) -> tuple[int | None, int | None]:
-        a_id = self.compare_version_a_selector.currentData()
-        b_id = self.compare_version_b_selector.currentData()
-        return (
-            None if a_id is None else int(a_id),
-            None if b_id is None else int(b_id),
-        )
-
-    def set_selected_y(self, column: str) -> None:
-        index = self.y_selector.findText(column)
-        if index >= 0:
-            self.y_selector.setCurrentIndex(index)
-
-    def set_selected_x(self, columns: list[str]) -> None:
-        selected = set(columns)
-        for index in range(self.x_selector.count()):
-            item = self.x_selector.item(index)
-            item.setSelected(item.text() in selected)
-
-    def set_results_text(self, text: str) -> None:
-        self.report_text.setPlainText(text)
-
-    def show_model_summary(self, model_name: str, formula: str, observations: int, status: str) -> None:
-        self.model_summary_label.setText(
-            f"Tipo de modelo: {model_name}\n"
-            f"Fórmula: {formula}\n"
-            f"Observaciones: {observations:,}\n"
-            f"Estado: {status}"
-        )
-
-    def show_metrics(self, metrics: dict) -> None:
+    def show_metrics(self, metrics: dict[str, object]) -> None:
         if not metrics:
             self.metrics_text.clear()
             return
-        lines = []
+        lines = ["### Métricas", ""]
         for label, value in metrics.items():
             if isinstance(value, float):
-                lines.append(f"{label}: {value:.4f}")
+                lines.append(f"- **{label}:** {value:.4f}")
             else:
-                lines.append(f"{label}: {value}")
-        self.metrics_text.setPlainText("\n".join(lines))
+                lines.append(f"- **{label}:** {value}")
+        self.metrics_text.setMarkdown("\n".join(lines))
 
     def show_coefficients(self, dataframe: pd.DataFrame | None) -> None:
         self.coefficients_table_model.set_dataframe(dataframe)
         self.coefficients_table_view.resizeColumnsToContents()
 
     def show_interpretation(self, text: str) -> None:
-        self.interpretation_text.setPlainText(text)
+        self.interpretation_text.setMarkdown(text)
 
-    def show_report(self, text: str) -> None:
-        self.report_text.setPlainText(text)
+    def show_report(self, markdown: str, *, title: str = "Reporte principal: markdown") -> None:
+        self.report_mode_label.setText(title)
+        self.report_text.setMarkdown(markdown)
 
-    def set_compare_results(self, summary_text: str, dataframe) -> None:
-        self.compare_results_text.setPlainText(summary_text)
-        self.compare_table_model.set_dataframe(dataframe)
-        self.compare_table_view.resizeColumnsToContents()
+    def show_latex(self, latex: str) -> None:
+        self.latex_text.setPlainText(latex)
 
-    def set_model_status(self, text: str) -> None:
-        self.model_status_label.setText(text)
-
-    def set_dataset_window(
-        self,
-        start_row: int,
-        end_row: int,
-        total_rows: int,
-        page_number: int,
-    ) -> None:
-        self.page_info_label.setText(
-            f"Mostrando filas {start_row:,}-{end_row:,} de {total_rows:,} | Página {page_number}"
+    def show_report_empty_state(self, state: str) -> None:
+        messages = {
+            "no_model": (
+                "### Reporte\n\n"
+                "No hay resultados todavía.\n"
+                "Seleccioná dataset, variables y ejecutá un modelo."
+            ),
+            "missing_variables": (
+                "### Reporte\n\n"
+                "Faltan variables para ejecutar el modelo."
+            ),
+            "ready": (
+                "### Reporte\n\n"
+                "Listo para ejecutar modelo."
+            ),
+        }
+        self.show_report(
+            messages.get(state, messages["no_model"]),
+            title="Reporte principal: estado actual",
         )
 
-    def set_pagination_enabled(self, has_previous: bool, has_next: bool) -> None:
-        self.prev_page_button.setEnabled(has_previous)
-        self.next_page_button.setEnabled(has_next)
+    def clear_model_results(self) -> None:
+        self.model_summary_text.setMarkdown("### Modelo\n\nNo hay resultados todavía.")
+        self.metrics_text.setMarkdown("### Métricas\n\nEjecutá un modelo para ver métricas persistentes.")
+        self.coefficients_table_model.set_dataframe(None)
+        self.interpretation_text.setMarkdown(
+            "### Interpretación\n\nLa interpretación automática aparecerá aquí."
+        )
+        self.show_report_empty_state("no_model")
+        self.show_latex("% La salida LaTeX aparecerá aquí.")
 
-    def _select_history_item(self, version_id: int) -> None:
-        for branch_index in range(self.history_tree.topLevelItemCount()):
-            branch_item = self.history_tree.topLevelItem(branch_index)
-            for child_index in range(branch_item.childCount()):
-                child_item = branch_item.child(child_index)
-                if child_item.data(0, Qt.ItemDataRole.UserRole) == version_id:
-                    self.history_tree.setCurrentItem(child_item)
-                    return
+    def focus_results(self, tab_name: str = "Reporte") -> None:
+        self.results_tabs.parentWidget().setVisible(True)
+        for index in range(self.results_tabs.count()):
+            if self.results_tabs.tabText(index).lower() == tab_name.lower():
+                self.results_tabs.setCurrentIndex(index)
+                self.results_tabs.setFocus()
+                return
+
+    def append_log_line(self, text: str) -> None:
+        self.logs_text.appendPlainText(text)
+
+    def toggle_logs_panel(self) -> None:
+        self.log_dock.setVisible(not self.log_dock.isVisible())
+
+    def get_log_handler(self) -> QtLogHandler:
+        return self.log_handler
+
+    def show_analysis_state(
+        self,
+        *,
+        dataset_name: str | None,
+        filters: list[str] | None,
+        model_name: str | None,
+        y_column: str | None,
+        x_columns: list[str] | None,
+    ) -> None:
+        filter_text = "sin filtros"
+        if filters:
+            filter_text = " | ".join(filters)
+        model_text = model_name or "sin ejecutar"
+        variables_text = "-"
+        if y_column and x_columns:
+            variables_text = f"{y_column} ~ {' + '.join(x_columns)}"
+        elif y_column:
+            variables_text = f"{y_column} ~ ?"
+        self.analysis_state_label.setText(
+            f"Dataset: {dataset_name or 'ninguno'} | "
+            f"Filtros: {filter_text} | "
+            f"Modelo: {model_text} | "
+            f"Variables: {variables_text}"
+        )
+
+    def set_has_dataset(self, has_dataset: bool) -> None:
+        self.dataset_selector.setEnabled(True)
+        self.filter_column_selector.setEnabled(has_dataset)
+        self.filter_operator_selector.setEnabled(has_dataset)
+        self.filter_input.setEnabled(has_dataset)
+        self.add_filter_button.setEnabled(has_dataset)
+        self.remove_filter_button.setEnabled(has_dataset)
+        self.clear_filters_button.setEnabled(has_dataset)
+        self.y_selector.setEnabled(has_dataset)
+        self.x_selector.setEnabled(has_dataset)
+        self._refresh_run_buttons(has_dataset=has_dataset)
+
+    def set_busy(self, busy: bool) -> None:
+        self.centralWidget().setEnabled(not busy)
+        self.menuBar().setEnabled(not busy)
+        self.log_dock.setEnabled(not busy)
+        self.statusBar().showMessage("Procesando..." if busy else self.feedback_label.text())
+
+    def _handle_variable_selection_change(self) -> None:
+        self._refresh_run_buttons()
+        self.variable_selection_changed.emit()
+
+    def _refresh_run_buttons(self, has_dataset: bool | None = None) -> None:
+        dataset_ready = has_dataset if has_dataset is not None else self.y_selector.isEnabled()
+        y_selected = bool(self.get_selected_y())
+        x_selected = bool(self.get_selected_x())
+        enabled = dataset_ready and y_selected and x_selected
+        self.run_ols_button.setEnabled(enabled)
+        self.run_logit_button.setEnabled(enabled)
+        self.run_probit_button.setEnabled(enabled)

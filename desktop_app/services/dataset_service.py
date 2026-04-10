@@ -1,12 +1,23 @@
 from __future__ import annotations
 
+from pathlib import Path
+
+import pandas as pd
+
 from desktop_app.models.dataset_model import DatasetModel
+from src.core.compare import compare_datasets, compare_model_results, compare_states
 from src.core.database import DuckDBManager
-from src.core.compare import compare_datasets, compare_states, compare_model_results
 from src.core.dataset import Dataset
 from src.core.evaluation import evaluar_clasificacion, evaluar_regresion
 from src.core.loader import list_datasets, load_dataset, load_existing_dataset
 from src.core.regression import run_logit, run_ols, run_probit
+from src.core.report import (
+    construir_tabla_coeficientes,
+    generate_interpretative_report,
+    generate_paper_report,
+    generate_simple_report,
+    generate_technical_report,
+)
 
 
 class DatasetService:
@@ -28,6 +39,62 @@ class DatasetService:
 
     def run_probit(self, dataset: DatasetModel, y_column: str, x_columns: list[str]):
         return run_probit(dataset.dataset, y_column, x_columns)
+
+    def get_metadata(self, dataset: DatasetModel) -> dict[str, object]:
+        return dataset.get_metadata()
+
+    def build_model_metrics(self, result, dataset: DatasetModel, state: dict) -> dict:
+        model_type = (state.get("model_type") or "").lower()
+        y = state.get("y")
+        x = state.get("x", [])
+        if not y or not x:
+            return {}
+        if model_type in {"logit", "probit"}:
+            return evaluar_clasificacion(result, dataset.dataset, y, x)
+        if model_type == "ols":
+            return evaluar_regresion(result)
+        return {}
+
+    def build_coefficients(self, result) -> pd.DataFrame:
+        return construir_tabla_coeficientes(result)[
+            ["Variable", "Coeficiente", "Valor p"]
+        ].rename(columns={"Coeficiente": "Coeficiente", "Valor p": "p-value"})
+
+    def build_report_bundle(self, result, metrics: dict, method: str) -> dict[str, str]:
+        normalized_method = str(method).lower()
+        return {
+            "simple": generate_simple_report(result, metrics=metrics, method=normalized_method),
+            "technical": generate_technical_report(result, metrics=metrics, method=normalized_method),
+            "interpretative": generate_interpretative_report(
+                result,
+                metrics=metrics,
+                method=normalized_method,
+            ),
+            "markdown": generate_paper_report(
+                result,
+                metrics=metrics,
+                method=normalized_method,
+                output_format="markdown",
+            ),
+            "latex": generate_paper_report(
+                result,
+                metrics=metrics,
+                method=normalized_method,
+                output_format="latex",
+            ),
+        }
+
+    def export_report_text(self, report_text: str, path: str | Path) -> Path:
+        output_path = Path(path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(report_text, encoding="utf-8")
+        return output_path
+
+    def export_coefficients_csv(self, coefficients: pd.DataFrame, path: str | Path) -> Path:
+        output_path = Path(path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        coefficients.to_csv(output_path, index=False)
+        return output_path
 
     def save_analysis(
         self,
@@ -70,32 +137,6 @@ class DatasetService:
         }
         dataset = Dataset.from_state(manager.connection, dataset_state)
         return DatasetModel(dataset=dataset), state
-
-    def save_analysis_version(
-        self,
-        *,
-        analysis_name: str,
-        parent_version_id: int | None,
-        branch: str,
-        dataset: DatasetModel,
-        model_type: str | None,
-        y_column: str | None,
-        x_columns: list[str],
-    ) -> dict:
-        state = dataset.get_state()
-        manager = DuckDBManager()
-        return manager.save_analysis_version(
-            analysis_name=analysis_name,
-            parent_version_id=parent_version_id,
-            branch=branch,
-            dataset=state["base_table"],
-            filters=state["filters"],
-            order_by=state["ordering"],
-            selected_columns=state["selected_columns"],
-            model_type=model_type,
-            y=y_column,
-            x=x_columns,
-        )
 
     def list_analysis_names(self) -> list[str]:
         manager = DuckDBManager()
@@ -152,17 +193,11 @@ class DatasetService:
             columns_b=dataset_b.get_columns(),
         )
 
-    def build_model_metrics(self, result, dataset: DatasetModel, state: dict) -> dict:
-        model_type = (state.get("model_type") or "").lower()
-        y = state.get("y")
-        x = state.get("x", [])
-        if not y or not x:
-            return {}
-        if model_type in {"logit", "probit"}:
-            return evaluar_clasificacion(result, dataset.dataset, y, x)
-        if model_type == "ols":
-            return evaluar_regresion(result)
-        return {}
-
-    def compare_models(self, result_a, result_b, metrics_a: dict | None = None, metrics_b: dict | None = None):
+    def compare_models(
+        self,
+        result_a,
+        result_b,
+        metrics_a: dict | None = None,
+        metrics_b: dict | None = None,
+    ):
         return compare_model_results(result_a, result_b, metrics_a=metrics_a, metrics_b=metrics_b)

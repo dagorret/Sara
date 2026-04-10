@@ -4,6 +4,7 @@ import math
 
 import pandas as pd
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
+from PySide6.QtGui import QColor
 
 
 class DataFrameModel(QAbstractTableModel):
@@ -11,10 +12,12 @@ class DataFrameModel(QAbstractTableModel):
         self,
         dataframe: pd.DataFrame | None = None,
         offset: int = 0,
+        highlight_pvalues: bool = False,
     ) -> None:
         super().__init__()
         self._dataframe = dataframe if dataframe is not None else pd.DataFrame()
         self._offset = max(offset, 0)
+        self._highlight_pvalues = bool(highlight_pvalues)
 
     def set_dataframe(self, dataframe: pd.DataFrame | None, offset: int = 0) -> None:
         self.beginResetModel()
@@ -33,10 +36,19 @@ class DataFrameModel(QAbstractTableModel):
         return len(self._dataframe.columns)
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole):
-        if not index.isValid() or role != Qt.ItemDataRole.DisplayRole:
+        if not index.isValid():
             return None
 
         value = self._dataframe.iat[index.row(), index.column()]
+        if role == Qt.ItemDataRole.ForegroundRole and self._highlight_pvalues:
+            color = self._coefficient_color(index.row())
+            if color is not None:
+                return color
+            return None
+
+        if role != Qt.ItemDataRole.DisplayRole:
+            return None
+
         if pd.isna(value):
             return ""
         if isinstance(value, float) and math.isfinite(value):
@@ -56,3 +68,14 @@ class DataFrameModel(QAbstractTableModel):
             return str(self._dataframe.columns[section])
 
         return str(self._offset + section)
+
+    def _coefficient_color(self, row: int):
+        if "p-value" not in self._dataframe.columns:
+            return None
+        try:
+            pvalue = float(self._dataframe.iloc[row]["p-value"])
+        except Exception:
+            return None
+        if pvalue < 0.05:
+            return QColor("#1d6f42")
+        return QColor("#7a7f87")

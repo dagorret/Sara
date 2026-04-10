@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 
@@ -15,7 +16,12 @@ from desktop_app.views.main_window import MainWindow
 
 
 def main() -> int:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    )
     app = QApplication(sys.argv)
+    app.setApplicationName("SARA Analytics Desktop")
     window = MainWindow()
     controller = MainController(window)
     window.controller = controller

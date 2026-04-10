@@ -37,6 +37,9 @@ class DatasetModel:
     def get_dtypes(self) -> dict[str, str]:
         return self.dataset.get_dtypes()
 
+    def get_metadata(self) -> dict[str, object]:
+        return self.dataset.get_metadata()
+
     def get_columns_metadata(self) -> list[tuple[str, str]]:
         dtypes = self.get_dtypes()
         return [(column, dtypes[column]) for column in self.get_columns()]
@@ -52,6 +55,9 @@ class DatasetModel:
 
     def reset_query(self) -> DatasetModel:
         return DatasetModel(dataset=self.dataset.reset_query())
+
+    def clear_filters(self) -> DatasetModel:
+        return DatasetModel(dataset=self.dataset.clear_filters())
 
     def get_state(self) -> dict:
         return self.dataset.get_state()

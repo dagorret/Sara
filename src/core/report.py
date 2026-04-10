@@ -498,6 +498,9 @@ def imprimir_resumen_modelo(modelo, metodo, mensajes_modelo=None):
 
 
 def inferir_metodo(modelo) -> str:
+    model_type = getattr(modelo, "model_type", None)
+    if model_type:
+        return str(model_type).lower()
     model_name = modelo.model.__class__.__name__.lower()
     if "logit" in model_name:
         return "logit"
